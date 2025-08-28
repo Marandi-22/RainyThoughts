@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, TextInput, ScrollView, Text, StyleSheet, Button, KeyboardAvoidingView, Platform, TouchableOpacity, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useEffect, useRef, useState } from 'react';
+import { Alert, Button, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context'; // Add this import
 
 // Define the log entry type
@@ -150,7 +150,12 @@ export default function JournalScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }}>
       {/* Page switcher */}
-      <View style={styles.nav}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.navScroll}
+        style={{ maxHeight: 48 }}
+      >
         {['thoughts', 'problems', 'insights', 'quotes'].map((tab) => (
           <TouchableOpacity
             key={tab}
@@ -170,7 +175,7 @@ export default function JournalScreen() {
             </Text>
           </TouchableOpacity>
         ))}
-      </View>
+      </ScrollView>
 
       {/* Render selected terminal page */}
       {page === 'thoughts' && <TerminalDiaryPage storageKey="thoughts" title="Thoughts" />}
@@ -262,18 +267,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#111',
     borderRadius: 6,
   },
-  nav: {
+  navScroll: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 12,
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    paddingVertical: 8,
     backgroundColor: '#000',
     marginBottom: 6,
     borderBottomWidth: 1,
     borderBottomColor: '#39FF14',
+    paddingHorizontal: 4,
   },
   tabBtn: {
-    paddingVertical: 6,
-    paddingHorizontal: 14,
+    paddingVertical: 4, // reduced
+    paddingHorizontal: 10, // reduced
     borderRadius: 6,
     marginHorizontal: 2,
   },
@@ -285,7 +292,7 @@ const styles = StyleSheet.create({
   tabBtnText: {
     color: '#39FF14',
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-    fontSize: 16,
+    fontSize: 15, // reduced
     fontWeight: 'bold',
     letterSpacing: 1,
   },
