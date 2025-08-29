@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Platform, FlatList, TextInput, TouchableOpacity, Alert } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, StyleSheet, Platform, FlatList, TextInput, TouchableOpacity, Alert, ScrollView, Dimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
@@ -25,8 +25,10 @@ const HomeScreen: React.FC = () => {
 
   const [goals, setGoals] = useState<Goal[]>([]);
   const [newGoal, setNewGoal] = useState('');
-  const [insight, setInsight] = useState<LogEntry | null>(null);
-  const [quote, setQuote] = useState<LogEntry | null>(null);
+  const [insights, setInsights] = useState<LogEntry[]>([]);
+  const [quotes, setQuotes] = useState<LogEntry[]>([]);
+  const [insightIndex, setInsightIndex] = useState(0);
+  const [quoteIndex, setQuoteIndex] = useState(0);
   const [timeLeft, setTimeLeft] = useState('');
 
   // Load goals
@@ -57,22 +59,31 @@ const HomeScreen: React.FC = () => {
     ]);
   };
 
-  // Load insight & quote of the day
+  // Load all insights & quotes from journals
   useEffect(() => {
     const loadData = async () => {
       const insightsData = await AsyncStorage.getItem('insights');
       if (insightsData) {
-        const insights: LogEntry[] = JSON.parse(insightsData);
-        if (insights.length > 0) setInsight(insights[Math.floor(Math.random() * insights.length)]);
+        const insightsArr: LogEntry[] = JSON.parse(insightsData);
+        setInsights(insightsArr);
       }
       const quotesData = await AsyncStorage.getItem('quotes');
       if (quotesData) {
-        const quotes: LogEntry[] = JSON.parse(quotesData);
-        if (quotes.length > 0) setQuote(quotes[Math.floor(Math.random() * quotes.length)]);
+        const quotesArr: LogEntry[] = JSON.parse(quotesData);
+        setQuotes(quotesArr);
       }
     };
     loadData();
   }, []);
+
+  // Rotate insight & quote every 10 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setInsightIndex(prev => insights.length ? (prev + 1) % insights.length : 0);
+      setQuoteIndex(prev => quotes.length ? (prev + 1) % quotes.length : 0);
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [insights.length, quotes.length]);
 
   // Life countdown
   useEffect(() => {
@@ -99,87 +110,96 @@ const HomeScreen: React.FC = () => {
 
   return (
     <ThemedView style={styles.container}>
-      {/* Memento Mori */}
-      <View style={styles.mementoContainer}>
-        <Text style={styles.skull}>☠️</Text>
-        <Text style={styles.mementoText}>Memento Mori: Your life is slipping away</Text>
-        <Text style={styles.timeLeft}>{timeLeft}</Text>
-        <View style={styles.lifeBarBackground}>
-          <View
-            style={[
-              styles.lifeBarFill,
-              {
-                flex: Math.max(
-                  0,
-                  1 - moment().diff(DOB, 'seconds') / DOB.clone().add(LIFESPAN_YEARS, 'years').diff(DOB, 'seconds')
-                ),
-              },
-            ]}
-          />
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+        {/* Memento Mori */}
+        <View style={styles.mementoContainer}>
+          <Text style={styles.skull}>☠️</Text>
+          <Text style={styles.mementoText}>Memento Mori: Your life is slipping away</Text>
+          <Text style={styles.timeLeft}>{timeLeft}</Text>
+          <View style={styles.lifeBarBackground}>
+            <View
+              style={[
+                styles.lifeBarFill,
+                {
+                  flex: Math.max(
+                    0,
+                    1 - moment().diff(DOB, 'seconds') / DOB.clone().add(LIFESPAN_YEARS, 'years').diff(DOB, 'seconds')
+                  ),
+                },
+              ]}
+            />
+          </View>
         </View>
-      </View>
 
-      {/* Insight & Quote */}
-      {insight && (
-        <View style={styles.widget}>
-          <ThemedText type="subtitle" style={styles.widgetTitle}>💡 Insight of the Day</ThemedText>
-          <Text style={styles.widgetText}>{insight.text}</Text>
-        </View>
-      )}
-      {quote && (
-        <View style={styles.widget}>
-          <ThemedText type="subtitle" style={styles.widgetTitle}>📝 Quote of the Day</ThemedText>
-          <Text style={styles.widgetText}>{quote.text}</Text>
-        </View>
-      )}
-
-      {/* Goals */}
-      <Text style={styles.sectionTitle}>🎯 Your Main Goals</Text>
-      <FlatList
-        data={goals}
-        keyExtractor={item => item.id}
-        renderItem={({ item }) => (
-          <View style={styles.goalItem}>
-            <Text style={styles.goalText}>{item.text}</Text>
-            <TouchableOpacity onPress={() => deleteGoal(item.id)}>
-              <Text style={styles.deleteText}>❌</Text>
-            </TouchableOpacity>
+        {/* Insights */}
+        {insights.length > 0 && (
+          <View style={styles.widget}>
+            <ThemedText type="subtitle" style={styles.widgetTitle}>💡 Insight</ThemedText>
+            <Text style={styles.widgetText}>{insights[insightIndex]?.text}</Text>
           </View>
         )}
-        ListEmptyComponent={<Text style={styles.placeholder}>Add your first goal below 👇</Text>}
-      />
-      <View style={styles.addGoalContainer}>
-        <TextInput
-          placeholder="New Goal..."
-          placeholderTextColor="#888"
-          style={styles.input}
-          value={newGoal}
-          onChangeText={setNewGoal}
-        />
-        <TouchableOpacity onPress={addGoal} style={styles.addButton}>
-          <Text style={styles.addButtonText}>➕</Text>
-        </TouchableOpacity>
-      </View>
 
-      {/* Weekly Progress */}
-      <Text style={styles.sectionTitle}>📊 Weekly Progress</Text>
-      <FlatList
-        data={weeklyStats}
-        horizontal
-        keyExtractor={(item) => `${item.year}-${item.week}`}
-        renderItem={({ item }) => {
-          let bgColor = '#ff5555'; // red by default
-          if (item.progress >= 70) bgColor = '#0f0'; // green
-          else if (item.progress >= 40) bgColor = '#ff0'; // yellow
+        {/* Quotes */}
+        {quotes.length > 0 && (
+          <View style={styles.widget}>
+            <ThemedText type="subtitle" style={styles.widgetTitle}>📝 Quote</ThemedText>
+            <Text style={styles.widgetText}>{quotes[quoteIndex]?.text}</Text>
+          </View>
+        )}
+
+        {/* Goals */}
+        <Text style={styles.sectionTitle}>🎯 Your Main Goals</Text>
+                {goals.length === 0 ? (
+          <Text style={styles.placeholder}>Add your first goal below 👇</Text>
+        ) : (
+          goals.map(item => (
+            <View key={item.id} style={styles.goalItem}>
+              <Text style={styles.goalText}>{item.text}</Text>
+              <TouchableOpacity onPress={() => deleteGoal(item.id)}>
+                <Text style={styles.deleteText}>❌</Text>
+              </TouchableOpacity>
+            </View>
+          ))
+        )}
+        <View style={styles.addGoalContainer}>
+          <TextInput
+            placeholder="New Goal..."
+            placeholderTextColor="#888"
+            style={styles.input}
+            value={newGoal}
+            onChangeText={setNewGoal}
+          />
+          <TouchableOpacity onPress={addGoal} style={styles.addButton}>
+            <Text style={styles.addButtonText}>➕</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Weekly Progress */}
+        <Text style={styles.sectionTitle}>📊 Weekly Progress</Text>
+        {weeklyStats.map((item) => {
+          let barColor = '#ff5555'; // red by default
+          if (item.progress >= 70) barColor = '#0f0'; // green
+          else if (item.progress >= 40) barColor = '#ff0'; // yellow
 
           return (
-            <View style={[styles.historyItem, { backgroundColor: bgColor }]}>
-              <Text style={styles.historyText}>W{item.week}</Text>
-              <Text style={styles.historyText}>{item.progress.toFixed(1)}%</Text>
+            <View key={`${item.year}-${item.week}`} style={{ marginBottom: 10 }}>
+              <Text style={{ color: '#39FF14', fontFamily: 'monospace', marginBottom: 2 }}>
+                Week {item.week}: {item.progress.toFixed(1)}%
+              </Text>
+              <View style={{ height: 14, backgroundColor: '#222', borderRadius: 7, overflow: 'hidden', borderWidth: 1, borderColor: '#39FF14' }}>
+                <View
+                  style={{
+                    width: `${Math.min(item.progress, 100)}%`,
+                    height: '100%',
+                    backgroundColor: barColor,
+                    borderRadius: 7,
+                  }}
+                />
+              </View>
             </View>
           );
-        }}
-      />
+        })}
+      </ScrollView>
     </ThemedView>
   );
 };
