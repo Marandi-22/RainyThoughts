@@ -153,44 +153,45 @@ const TerminalDiaryPage: React.FC<TerminalDiaryPageProps> = ({ storageKey, title
   );
 };
 
+const books = [
+  { key: 'thoughts', title: 'Thoughts', color: '#8A2BE2' },
+  { key: 'problems', title: 'Problems', color: '#FF4500' },
+  { key: 'insights', title: 'Insights', color: '#228B22' },
+  { key: 'quotes', title: 'Quotes', color: '#4682B4' },
+];
+
 export default function JournalScreen() {
-  const [page, setPage] = useState<'thoughts' | 'problems' | 'insights' | 'quotes'>('thoughts');
+  const [selectedBook, setSelectedBook] = useState<string | null>(null);
+
+  if (selectedBook) {
+    const book = books.find(b => b.key === selectedBook);
+    if (!book) return null;
+
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }}>
+        <TouchableOpacity onPress={() => setSelectedBook(null)} style={styles.backButton}>
+          <Text style={styles.backButtonText}>← Back to Bookshelf</Text>
+        </TouchableOpacity>
+        <TerminalDiaryPage storageKey={book.key} title={book.title} />
+      </SafeAreaView>
+    );
+  }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }}>
-      {/* Page switcher */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.navScroll}
-        style={{ maxHeight: 48 }}
-      >
-        {['thoughts', 'problems', 'insights', 'quotes'].map((tab) => (
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#1a1a1a' }}>
+      <Text style={styles.bookshelfTitle}>My Journal</Text>
+      <View style={styles.bookshelf}>
+        {books.map((book, index) => (
           <TouchableOpacity
-            key={tab}
-            onPress={() => setPage(tab as any)}
-            style={[
-              styles.tabBtn,
-              page === tab && styles.activeTabBtn,
-            ]}
+            key={book.key}
+            style={[styles.book, { backgroundColor: book.color, transform: [{ rotate: '-2deg' }] }]}
+            onPress={() => setSelectedBook(book.key)}
           >
-            <Text
-              style={[
-                styles.tabBtnText,
-                page === tab && styles.activeTabBtnText,
-              ]}
-            >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            </Text>
+            <Text style={styles.bookTitle}>{book.title}</Text>
           </TouchableOpacity>
         ))}
-      </ScrollView>
-
-      {/* Render selected terminal page */}
-      {page === 'thoughts' && <TerminalDiaryPage storageKey="thoughts" title="Thoughts" />}
-      {page === 'problems' && <TerminalDiaryPage storageKey="problems" title="Problems" />}
-      {page === 'insights' && <TerminalDiaryPage storageKey="insights" title="Insights" />}
-      {page === 'quotes' && <TerminalDiaryPage storageKey="quotes" title="Quotes" />}
+      </View>
+      <View style={styles.shelf} />
     </SafeAreaView>
   );
 }
@@ -331,5 +332,60 @@ const styles = StyleSheet.create({
     padding: 8,
     marginBottom: 6,
     minHeight: 40,
+  },
+  bookshelfTitle: {
+    color: '#fff',
+    fontSize: 32,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginVertical: 20,
+    fontFamily: 'serif',
+  },
+  bookshelf: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+    height: 250,
+    paddingHorizontal: 20,
+  },
+  book: {
+    width: 40,
+    height: 200,
+    borderRadius: 4,
+    marginHorizontal: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 5, height: 5 },
+    shadowOpacity: 0.5,
+    shadowRadius: 5,
+    elevation: 10,
+  },
+  bookTitle: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+    transform: [{ rotate: '90deg' }],
+    width: 180,
+    textAlign: 'center',
+  },
+  shelf: {
+    height: 10,
+    backgroundColor: '#4a2c2a',
+    marginHorizontal: 20,
+    borderRadius: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.7,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  backButton: {
+    padding: 10,
+    backgroundColor: '#333',
+  },
+  backButtonText: {
+    color: '#fff',
+    textAlign: 'center',
   },
 });
