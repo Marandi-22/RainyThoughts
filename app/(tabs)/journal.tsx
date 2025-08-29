@@ -91,54 +91,63 @@ const TerminalDiaryPage: React.FC<TerminalDiaryPageProps> = ({ storageKey, title
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: '#000' }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
     >
-      <ScrollView style={styles.terminal} ref={scrollRef}>
-        <Text style={styles.sectionTitle}>{title}</Text>
-        {logs.length === 0 && (
-          <Text style={styles.emptyText}>No entries yet.</Text>
-        )}
-        {logs.map((log) => (
-          <View key={log.id} style={styles.logContainer}>
-            <View style={styles.logHeader}>
-              <Text style={styles.dateText}>{formatDate(log.date)}</Text>
-              <View style={styles.actionButtons}>
-                <TouchableOpacity onPress={() => startEdit(log.id, log.text)}>
-                  <Text style={styles.editBtn}>Edit</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => deleteLog(log.id)}>
-                  <Text style={styles.deleteBtn}>Delete</Text>
-                </TouchableOpacity>
+      <View style={{ flex: 1 }}>
+        <ScrollView
+          style={styles.terminal}
+          ref={scrollRef}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ paddingBottom: 80 }}
+        >
+          <Text style={styles.sectionTitle}>{title}</Text>
+          {logs.length === 0 && (
+            <Text style={styles.emptyText}>No entries yet.</Text>
+          )}
+          {logs.map((log) => (
+            <View key={log.id} style={styles.logContainer}>
+              <View style={styles.logHeader}>
+                <Text style={styles.dateText}>{formatDate(log.date)}</Text>
+                <View style={styles.actionButtons}>
+                  <TouchableOpacity onPress={() => startEdit(log.id, log.text)}>
+                    <Text style={styles.editBtn}>Edit</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => deleteLog(log.id)}>
+                    <Text style={styles.deleteBtn}>Delete</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
+              {editingId === log.id ? (
+                <View style={styles.editArea}>
+                  <TextInput
+                    style={styles.editInput}
+                    value={editingText}
+                    onChangeText={setEditingText}
+                    multiline
+                    autoFocus
+                  />
+                  <Button title="Save" onPress={saveEdit} color="#0f0" />
+                  <Button title="Cancel" onPress={() => setEditingId(null)} color="#888" />
+                </View>
+              ) : (
+                <Text style={styles.logText}>{log.text}</Text>
+              )}
             </View>
-            {editingId === log.id ? (
-              <View style={styles.editArea}>
-                <TextInput
-                  style={styles.editInput}
-                  value={editingText}
-                  onChangeText={setEditingText}
-                  multiline
-                  autoFocus
-                />
-                <Button title="Save" onPress={saveEdit} color="#0f0" />
-                <Button title="Cancel" onPress={() => setEditingId(null)} color="#888" />
-              </View>
-            ) : (
-              <Text style={styles.logText}>{log.text}</Text>
-            )}
-          </View>
-        ))}
-      </ScrollView>
-
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          value={text}
-          onChangeText={setText}
-          placeholder="Type your entry..."
-          placeholderTextColor="#666"
-          multiline
-        />
-        <Button title="Enter" onPress={saveLog} color="#0f0" />
+          ))}
+        </ScrollView>
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.input}
+            value={text}
+            onChangeText={setText}
+            placeholder="Type your entry..."
+            placeholderTextColor="#666"
+            multiline
+            blurOnSubmit={false}
+            onSubmitEditing={saveLog}
+          />
+          <Button title="Enter" onPress={saveLog} color="#0f0" />
+        </View>
       </View>
     </KeyboardAvoidingView>
   );
@@ -256,45 +265,52 @@ const styles = StyleSheet.create({
     borderTopColor: '#222',
     backgroundColor: '#000',
     alignItems: 'center',
+    minHeight: 54,
   },
   input: {
     flex: 1,
     color: '#0f0',
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
     fontSize: 16,
-    padding: 8,
+    padding: 10,
     marginRight: 10,
     backgroundColor: '#111',
     borderRadius: 6,
+    minHeight: 40,
+    maxHeight: 90,
+    textAlignVertical: 'top',
   },
   navScroll: {
     flexDirection: 'row',
     justifyContent: 'flex-start',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 12, // increased
     backgroundColor: '#000',
     marginBottom: 6,
-    borderBottomWidth: 1,
+    borderBottomWidth: 1.5, // thinner
     borderBottomColor: '#39FF14',
-    paddingHorizontal: 4,
+    paddingHorizontal: 8, // more padding
+    minHeight: 54, // ensure height
   },
   tabBtn: {
-    paddingVertical: 4, // reduced
-    paddingHorizontal: 10, // reduced
+    paddingVertical: 8, // increased
+    paddingHorizontal: 18, // increased
     borderRadius: 6,
-    marginHorizontal: 2,
+    marginHorizontal: 4,
+    minWidth: 80, // ensure width for text
   },
   activeTabBtn: {
-    borderBottomWidth: 3,
+    borderBottomWidth: 2,
     borderBottomColor: '#39FF14',
     backgroundColor: '#111',
   },
   tabBtnText: {
     color: '#39FF14',
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-    fontSize: 15, // reduced
+    fontSize: 17, // increased
     fontWeight: 'bold',
     letterSpacing: 1,
+    paddingBottom: 2,
   },
   activeTabBtnText: {
     color: '#39FF14',

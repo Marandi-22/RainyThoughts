@@ -1,10 +1,11 @@
 // app/(tabs)/pomodoro.tsx
 import React, { useState, useEffect, useRef } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, TextInput } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, SafeAreaView, StatusBar, ScrollView } from "react-native";
 import { Audio } from "expo-av";
 import LetterBox from "@/components/LetterBox";
 import letters, { LetterState } from "@/constants/letters";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useKeepAwake } from "expo-keep-awake";
 
 const voiceLines = [
   require("../../assets/sounds/coward_and_fool.mp3"),
@@ -23,6 +24,8 @@ const voiceLines = [
 ];
 
 export default function Pomodoro() {
+  useKeepAwake(); // Add this at the top of your component
+
   // Editable timer and break
   const [pomodoroMinutes, setPomodoroMinutes] = useState(25);
   const [breakMinutes, setBreakMinutes] = useState(5);
@@ -248,79 +251,88 @@ export default function Pomodoro() {
   }, [breakMinutes]);
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Hacker Pomodoro</Text>
-      <View style={styles.inputRow}>
-        <Text style={styles.label}>Pomodoro (min):</Text>
-        <TextInput
-          style={styles.input}
-          keyboardType="numeric"
-          value={String(pomodoroMinutes)}
-          onChangeText={v => setPomodoroMinutes(Number(v) || 1)}
-        />
-        <Text style={styles.label}>Break (min):</Text>
-        <TextInput
-          style={styles.input}
-          keyboardType="numeric"
-          value={String(breakMinutes)}
-          onChangeText={v => setBreakMinutes(Number(v) || 1)}
-        />
-      </View>
-      <View style={styles.inputRow}>
-        <Text style={styles.label}>Min Pomodoros/day:</Text>
-        <TextInput
-          style={styles.input}
-          keyboardType="numeric"
-          value={String(minPomodoros)}
-          onChangeText={v => setMinPomodoros(Number(v) || 1)}
-        />
-      </View>
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="light-content" backgroundColor="#000" />
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.container}>
+          <Text style={styles.title}>Hacker Pomodoro</Text>
+          <View style={styles.inputRow}>
+            <Text style={styles.label}>Pomodoro (min):</Text>
+            <TextInput
+              style={styles.input}
+              keyboardType="numeric"
+              value={String(pomodoroMinutes)}
+              onChangeText={v => setPomodoroMinutes(Number(v) || 1)}
+            />
+            <Text style={styles.label}>Break (min):</Text>
+            <TextInput
+              style={styles.input}
+              keyboardType="numeric"
+              value={String(breakMinutes)}
+              onChangeText={v => setBreakMinutes(Number(v) || 1)}
+            />
+          </View>
+          <View style={styles.inputRow}>
+            <Text style={styles.label}>Min Pomodoros/day:</Text>
+            <TextInput
+              style={styles.input}
+              keyboardType="numeric"
+              value={String(minPomodoros)}
+              onChangeText={v => setMinPomodoros(Number(v) || 1)}
+            />
+          </View>
 
-      <Text style={styles.clock}>
-        {String(minutes).padStart(2, "0")}:{String(seconds).padStart(2, "0")}
-      </Text>
-      <Text style={styles.status}>{onBreak ? "Break Time" : "Focus Time"}</Text>
+          <Text style={styles.clock}>
+            {String(minutes).padStart(2, "0")}:{String(seconds).padStart(2, "0")}
+          </Text>
+          <Text style={styles.status}>{onBreak ? "Break Time" : "Focus Time"}</Text>
 
-      <View style={styles.buttons}>
-        <TouchableOpacity style={styles.btn} onPress={handleStart}>
-          <Text style={styles.btnText}>Start</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.btn} onPress={handlePause}>
-          <Text style={styles.btnText}>Pause</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.btn} onPress={handleReset}>
-          <Text style={styles.btnText}>Reset</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.btn} onPress={handleStartBreak}>
-          <Text style={styles.btnText}>Start Break</Text>
-        </TouchableOpacity>
-      </View>
+          <View style={styles.buttons}>
+            <TouchableOpacity style={styles.btn} onPress={handleStart}>
+              <Text style={styles.btnText}>Start</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.btn} onPress={handlePause}>
+              <Text style={styles.btnText}>Pause</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.btn} onPress={handleReset}>
+              <Text style={styles.btnText}>Reset</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.btn} onPress={handleStartBreak}>
+              <Text style={styles.btnText}>Start Break</Text>
+            </TouchableOpacity>
+          </View>
 
-      <Text style={styles.info}>
-        Pomodoros today: {pomodorosToday} / {minPomodoros} {"\n"}
-        Total Pomodoro time: {totalPomodoroTime} min{"\n"}
-        Streak: {streak} days | Missed: {missedDays} days
-      </Text>
+          <Text style={styles.info}>
+            Pomodoros today: {pomodorosToday} / {minPomodoros} {"\n"}
+            Total Pomodoro time: {totalPomodoroTime} min{"\n"}
+            Streak: {streak} days | Missed: {missedDays} days
+          </Text>
 
-      <LetterBox letters={lettersQueue} />
+          <LetterBox letters={lettersQueue} />
 
-      <View style={styles.explanation}>
-        <Text style={styles.explainTitle}>How Streak & Missed Work:</Text>
-        <Text style={styles.explainText}>
-          - <Text style={{color:'#39FF14'}}>Streak</Text> increases by 1 for each day you meet or exceed your minimum Pomodoros.
-        </Text>
-        <Text style={styles.explainText}>
-          - <Text style={{color:'#39FF14'}}>Missed</Text> increases by 1 for each day you do less than your minimum.
-        </Text>
-        <Text style={styles.explainText}>
-          - <Text style={{color:'#39FF14'}}>Total Pomodoro time</Text> is the sum of all Pomodoro minutes completed.
-        </Text>
-      </View>
-    </View>
+          <View style={styles.explanation}>
+            <Text style={styles.explainTitle}>How Streak & Missed Work:</Text>
+            <Text style={styles.explainText}>
+              - <Text style={{color:'#39FF14'}}>Streak</Text> increases by 1 for each day you meet or exceed your minimum Pomodoros.
+            </Text>
+            <Text style={styles.explainText}>
+              - <Text style={{color:'#39FF14'}}>Missed</Text> increases by 1 for each day you do less than your minimum.
+            </Text>
+            <Text style={styles.explainText}>
+              - <Text style={{color:'#39FF14'}}>Total Pomodoro time</Text> is the sum of all Pomodoro minutes completed.
+            </Text>
+          </View>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#000",
+  },
   container: {
     flex: 1,
     backgroundColor: "#000",
@@ -356,6 +368,11 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginHorizontal: 4,
     fontSize: 16,
+    paddingVertical: 0, // Add this
+    paddingTop: 0,      // Add this
+    paddingBottom: 0,   // Add this
+    includeFontPadding: false, // Add this (Android only)
+    textAlignVertical: "center", // Add this
   },
   clock: {
     fontSize: 72,
@@ -419,5 +436,11 @@ const styles = StyleSheet.create({
     color: "#39FF14",
     fontSize: 14,
     marginBottom: 2,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingBottom: 40,
   },
 });
