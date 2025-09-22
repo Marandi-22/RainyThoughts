@@ -1,0 +1,246 @@
+# Complete Enemy Hierarchy: Data Weaknesses & Personalities
+
+## Tier 1: Small Fries - Swarm Taunters (Acts 1-2)
+
+### 1. Your Classroom Kids
+- **HP:** 60
+- **Personality:** immature_mockers
+- **Strength:** 💰 WEALTH (always comparing who has what)
+- **Weakness:** 🧠 WISDOM (dumb as rocks, easily confused)
+- **Data Triggers:** ["academic_failures", "social_embarrassments", "childhood_awkwardness"]
+- **Special:** Gang up in groups, laugh in unison at your mistakes
+
+### 2. Your Parents' Gossip Circle
+- **HP:** 80
+- **Personality:** judgmental_whispers
+- **Strength:** 🧠 WISDOM (twist stories smartly to hurt)
+- **Weakness:** 💪 STRENGTH (collapse when confronted head-on)
+- **Data Triggers:** ["family_disappointments", "life_choices", "career_setbacks"]
+- **Special:** Magnify your failures through "concerned" whispers
+
+### 3. Your Trash Friends
+- **HP:** 70
+- **Personality:** fake_loyalty_draggers
+- **Strength:** 🎯 LUCK (always find excuses and ways out)
+- **Weakness:** 💰 WEALTH (broke and dependent on others)
+- **Data Triggers:** ["peer_pressure_failures", "social_anxiety", "friendship_betrayals"]
+- **Special:** Pretend to support you while sabotaging
+
+### 4. The Girls in Your Class
+- **HP:** 65
+- **Personality:** sarcastic_ice_queens
+- **Strength:** 💰 WEALTH (status-driven, materialistic)
+- **Weakness:** 💪 STRENGTH (fall apart under real-world pressure)
+- **Data Triggers:** ["romantic_rejections", "social_status_anxiety", "appearance_insecurities"]
+- **Special:** Icy sarcasm, giggle at your nervousness
+
+### 5. Orcs (LOTR-style)
+- **HP:** 85
+- **Personality:** crude_brutality
+- **Strength:** 💪 STRENGTH (numbers + raw aggression)
+- **Weakness:** 🧠 WISDOM (too dumb to strategize)
+- **Data Triggers:** ["physical_weakness", "intimidation_fears", "violence_anxiety"]
+- **Special:** Overwhelming crude mockery, yell over each other
+
+### 6. Gremlins
+- **HP:** 50
+- **Personality:** chaotic_pranksters
+- **Strength:** 🎯 LUCK (random mischief always works)
+- **Weakness:** 💪 STRENGTH (fragile, squishy bodies)
+- **Data Triggers:** ["technology_failures", "chaos_patterns", "organization_struggles"]
+- **Special:** Cause chaos while laughing maniacally
+
+### 7. Stormtroopers
+- **HP:** 75
+- **Personality:** arrogant_incompetents
+- **Strength:** 💰 WEALTH (Empire resources backing them)
+- **Weakness:** 🎯 LUCK (can't hit anything, terrible execution)
+- **Data Triggers:** ["authority_issues", "system_failures", "bureaucracy_frustrations"]
+- **Special:** Act superior while failing constantly
+
+### 8. Goblins
+- **HP:** 55
+- **Personality:** snarky_cowards
+- **Strength:** 💰 WEALTH (hoarders, always scheming for resources)
+- **Weakness:** 💪 STRENGTH (collapse when confronted directly)
+- **Data Triggers:** ["resource_scarcity", "money_anxiety", "hoarding_behaviors"]
+- **Special:** Gloat in numbers, run when alone
+
+### 9. Hyenas (Lion King)
+- **HP:** 70
+- **Personality:** cackling_opportunists
+- **Strength:** 🎯 LUCK (chaos and opportunity favor them)
+- **Weakness:** 🧠 WISDOM (easily tricked and manipulated)
+- **Data Triggers:** ["failure_moments", "embarrassment_memories", "downfall_patterns"]
+- **Special:** Iconic maniacal laughter at your suffering
+
+### 10. Team Rocket
+- **HP:** 60
+- **Personality:** theatrical_failures
+- **Strength:** 💰 WEALTH (always chasing "the big score")
+- **Weakness:** 💪 STRENGTH (physically weak, blast off repeatedly)
+- **Data Triggers:** ["get_rich_quick_schemes", "unrealistic_dreams", "pattern_failures"]
+- **Special:** Loud rhyming trash talk, fail spectacularly
+
+## Tier 2: Mid-Game Enemies - Personal Tormentors (Act 3)
+
+### 11. Your School Teacher (Rajest Mishra)
+- **HP:** 120
+- **Personality:** academic_destroyer
+- **Strength:** 🧠 WISDOM (crushes with intellectual superiority)
+- **Weakness:** 🎯 LUCK (flustered when things don't go as planned)
+- **Data Triggers:** ["academic_failures", "test_scores", "learning_difficulties", "educational_trauma"]
+- **Special:** Belittling academic performance, nitpicks every intellectual weakness
+
+### 12. Your Childhood Bully
+- **HP:** 100
+- **Personality:** physical_intimidator
+- **Strength:** 💪 STRENGTH (physical dominance and intimidation)
+- **Weakness:** 🧠 WISDOM (dumb, falls for clever tricks)
+- **Data Triggers:** ["physical_weakness", "bullying_trauma", "intimidation_memories", "courage_failures"]
+- **Special:** Loves reminding you of past physical/social humiliations
+
+### 13. Your Disappointed Parents
+- **HP:** 130
+- **Personality:** silent_judges
+- **Strength:** 🧠 WISDOM (know exactly how to cut deepest)
+- **Weakness:** 🎯 LUCK (can't control real-life randomness)
+- **Data Triggers:** ["family_expectations", "career_disappointments", "life_choices", "parental_approval_needs"]
+- **Special:** Silent judgment, devastating sighs, "you could've done better"
+
+### 14. Your Incompetent Friends
+- **HP:** 90
+- **Personality:** confident_blamers
+- **Strength:** 💪 STRENGTH (only when in groups, mob mentality)
+- **Weakness:** 💰 WEALTH (broke, unreliable, no resources)
+- **Data Triggers:** ["peer_influence", "group_failure_patterns", "responsibility_avoidance"]
+- **Special:** Act confident while failing, blame you for their problems
+
+### 15. The Girl Who Left You
+- **HP:** 110
+- **Personality:** dismissive_crusher
+- **Strength:** 💰 WEALTH (status, options, social value)
+- **Weakness:** 🧠 WISDOM (can't see past surface appearances)
+- **Data Triggers:** ["romantic_failures", "rejection_trauma", "inadequacy_feelings", "relationship_patterns"]
+- **Special:** Dismissive attitude, makes you feel "not enough"
+
+### 16. Your Rich Friend
+- **HP:** 100
+- **Personality:** wealth_flaunter
+- **Strength:** 💰 WEALTH (always has more resources and options)
+- **Weakness:** 💪 STRENGTH (crumbles when physically/mentally tested)
+- **Data Triggers:** ["financial_struggles", "status_envy", "resource_comparison", "class_anxiety"]
+- **Special:** Arrogant wealth display, mocks your financial struggles
+
+## Tier 3: Major Bosses - Psychological Destroyers (Act 4)
+
+### 17. The Joker (Chaos Agent)
+- **HP:** 200
+- **Personality:** sadistic_chaos_incarnate
+- **Strength:** 🎯 LUCK (chaos and unpredictability always favor him)
+- **Weakness:** 💪 STRENGTH (fragile physically, relies on mental games)
+- **Data Triggers:** ["all_failure_patterns", "chaos_attraction", "self_sabotage", "unpredictability_fears"]
+- **Special:** Sadistic psychological warfare, turns your problems into cruel comedy
+
+### 18. King Joffrey
+- **HP:** 140
+- **Personality:** entitled_sadist
+- **Strength:** 💰 WEALTH (backed by power and resources)
+- **Weakness:** 💪 STRENGTH (physically weak coward when alone)
+- **Data Triggers:** ["powerlessness", "authority_abuse", "privilege_envy", "injustice_experiences"]
+- **Special:** Cruel mockery from position of privilege, loves making you feel powerless
+
+### 19. Pennywise (IT)
+- **HP:** 180
+- **Personality:** fear_incarnate
+- **Strength:** 🧠 WISDOM (psychological warfare, knows your deepest fears)
+- **Weakness:** 💪 STRENGTH (beaten by courage and direct confrontation)
+- **Data Triggers:** ["deepest_fears", "phobias", "trauma_memories", "childhood_terrors"]
+- **Special:** Morphs into your specific fears, mocks what hurts most
+
+### 20. Darth Vader
+- **HP:** 220
+- **Personality:** cold_overwhelming_power
+- **Strength:** 💪 STRENGTH (overwhelming physical and mental dominance)
+- **Weakness:** 🎯 LUCK (can be outmaneuvered by fate and unexpected moves)
+- **Data Triggers:** ["authority_fear", "power_intimidation", "father_issues", "inadequacy_complex"]
+- **Special:** Cold, crushing presence, few words but maximum intimidation
+
+### 21. Dracula (Classic)
+- **HP:** 160
+- **Personality:** sophisticated_predator
+- **Strength:** 💰 WEALTH (eternal riches and accumulated power)
+- **Weakness:** 🧠 WISDOM (exploitable through knowledge of his lore/weaknesses)
+- **Data Triggers:** ["temptation_patterns", "addiction_struggles", "willpower_failures", "dark_attractions"]
+- **Special:** Sophisticated seduction, taunts your weakness to temptation
+
+### 22. NTR Bully
+- **HP:** 150
+- **Personality:** dominant_humiliator
+- **Strength:** 💪 STRENGTH (physical and social dominance)
+- **Weakness:** 🎯 LUCK (loses control when chaos disrupts his plans)
+- **Data Triggers:** ["sexual_inadequacy", "masculine_insecurity", "dominance_fears", "relationship_trauma"]
+- **Special:** Arrogant sexual dominance, rubs humiliation in your face
+
+## Tier 4: Inner Demon Lords (Act 5)
+
+### 23. The Procrastination Demon
+- **HP:** 300
+- **Personality:** delay_incarnate
+- **Strength:** 🎯 LUCK (always finds perfect excuses and distractions)
+- **Weakness:** 💪 STRENGTH (crumbles under consistent action)
+- **Data Triggers:** ["procrastination_patterns", "avoidance_behaviors", "deadline_failures", "motivation_struggles"]
+- **Special:** Master of "tomorrow" promises, uses your delay patterns against you
+
+### 24. The Impostor Shadow
+- **HP:** 280
+- **Personality:** inadequacy_amplifier
+- **Strength:** 🧠 WISDOM (knows exactly how to make you feel stupid/inadequate)
+- **Weakness:** 💰 WEALTH (achievements and success diminish its power)
+- **Data Triggers:** ["impostor_syndrome", "competence_doubts", "comparison_patterns", "achievement_anxiety"]
+- **Special:** Makes you feel like a fraud, amplifies inadequacy feelings
+
+### 25. The Perfectionism Wraith
+- **HP:** 320
+- **Personality:** paralysis_inducer
+- **Strength:** 🧠 WISDOM (uses your intelligence against you, analysis paralysis)
+- **Weakness:** 🎯 LUCK (random action breaks its perfectionist traps)
+- **Data Triggers:** ["perfectionism_paralysis", "fear_of_imperfection", "analysis_overdose", "completion_anxiety"]
+- **Special:** Stops you from starting/finishing through perfectionist demands
+
+### 26. The Anxiety Overlord
+- **HP:** 400
+- **Personality:** worry_incarnate
+- **Strength:** 🧠 WISDOM (uses your intelligence to create worst-case scenarios)
+- **Weakness:** 💪 STRENGTH (action destroys anxiety's power)
+- **Data Triggers:** ["anxiety_patterns", "worry_spirals", "catastrophic_thinking", "fear_paralysis"]
+- **Special:** Manifests all your worries and worst-case scenario thinking
+
+### 27. The Depression Emperor
+- **HP:** 450
+- **Personality:** hopelessness_incarnate
+- **Strength:** 💪 STRENGTH (saps your energy and motivation)
+- **Weakness:** 🎯 LUCK (small unexpected wins can break its hold)
+- **Data Triggers:** ["depression_episodes", "hopelessness_patterns", "energy_depletion", "motivation_loss"]
+- **Special:** Drains all hope and energy, makes everything feel pointless
+
+## Tier 5: Ultimate Final Boss
+
+### 28. Your Inner Demon Lord
+- **HP:** 1000
+- **Personality:** absolute_self_destruction
+- **Strength:** ALL STATS (uses your own power against you)
+- **Weakness:** PERFECT BALANCE (only defeated by mastering all four stats)
+- **Data Triggers:** ALL_PERSONAL_DATA (everything you've ever struggled with)
+- **Required Stats:** 💰200 💪200 🧠200 🎯150 + 100 Pomodoros + 14-day streak
+- **Special:** IS you - every excuse, rationalization, self-sabotage pattern. The voice that tells you to quit.
+
+## Boss Progression Requirements
+
+**Acts 1-2:** Small fries (60-85 HP) - Basic stat requirements
+**Act 3:** Personal tormentors (90-130 HP) - Moderate stats + personal growth
+**Act 4:** Psychological destroyers (140-220 HP) - High stats + streak consistency  
+**Act 5:** Inner demon lords (280-450 HP) - Near-perfect stats + long-term commitment
+**Final:** Ultimate boss (1000 HP) - Mastery of all aspects + sustained excellence
+
+Each enemy's data triggers determine which of your personal problems, goals, and failures they'll use against you in their AI-generated taunts. The stronger you get, the more afraid they become - except for the always_arrogant ones who never show fear but get progressively more desperate in their dismissals.

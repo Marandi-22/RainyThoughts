@@ -1,0 +1,196 @@
+```markdown
+# Act Progression System: How Long Each Act Lasts
+
+## Act Progression Mechanics
+
+### Act 1: The Awakening (Days 1-7)
+**Duration:** 7 days minimum
+**Enemies:** Small fries (Classroom Kids, Parents' Gossip, Trash Friends)
+**Progression Requirements:**
+- Complete 7 consecutive days (streak)
+- Defeat 3-4 small fry enemies
+- Reach Level 5
+- Any stat reaches 25+ points
+
+**Why 7 days?**
+- Establishes the habit loop
+- Builds initial momentum 
+- Proves you can maintain consistency for a full week
+
+### Act 2: The Grind (Days 8-21) 
+**Duration:** 14 days (2 more weeks)
+**Enemies:** Remaining small fries + some mid-tier
+**Progression Requirements:**
+- 21-day total streak (habit formation period)
+- Defeat 6-8 enemies total
+- Reach Level 10
+- Two stats reach 50+ points each
+- Complete 50+ total Pomodoros
+
+**Why 21 days?**
+- Classic habit formation timeframe
+- Proves you're past the "honeymoon phase"
+- Long enough to face real challenges and temptations
+
+### Act 3: The Test (Days 22-42)
+**Duration:** 21 days (3 weeks)
+**Enemies:** Personal tormentors (Rajest Mishra, Childhood Bully, etc.)
+**Progression Requirements:**
+- 42-day total streak (6 weeks continuous)
+- Defeat 10-12 enemies total
+- Reach Level 20
+- Three stats reach 100+ points each
+- Complete 100+ total Pomodoros
+
+**Why 42 days?**
+- 6 weeks = serious commitment proven
+- Long enough for real personality changes
+- Personal demons can only be faced after building real strength
+
+### Act 4: The Crucible (Days 43-70)
+**Duration:** 28 days (4 weeks)
+**Enemies:** Psychological destroyers (Joker, Joffrey, Vader, etc.)
+**Progression Requirements:**
+- 70-day total streak (10 weeks)
+- Defeat 15+ enemies total  
+- Reach Level 35
+- All four stats reach 150+ points
+- Complete 200+ total Pomodoros
+
+**Why 70 days?**
+- 10 weeks = you've survived multiple potential quit points
+- Major psychological enemies require serious mental fortitude
+- Quarter-year commitment level
+
+### Act 5: Inner Hell (Days 71-100)
+**Duration:** 30 days minimum
+**Enemies:** Inner demon lords (Procrastination, Anxiety, Depression, etc.)
+**Progression Requirements:**
+- 100-day total streak 
+- Defeat 20+ enemies total
+- Reach Level 50
+- Three stats reach 200+ points, one at 150+
+- Complete 300+ total Pomodoros
+
+**Why 100 days?**
+- Triple-digit streak = legendary status
+- Inner demons are your deepest patterns - need massive strength
+- 100 days = serious life transformation timeframe
+
+### Final Act: The Ultimate Battle (Days 101+)
+**Duration:** Until victory or defeat
+**Enemy:** Your Inner Demon Lord
+**Requirements:**
+- 💰200 💪200 🧠200 🎯150
+- 100+ total Pomodoros  
+- 14+ day current streak (must be in good form)
+- All previous bosses defeated
+
+## Flexible Progression System
+
+### Stat-Based Unlocks (Alternative Path)
+```javascript
+// If someone focuses heavily on specific stats, they can skip ahead
+const checkEarlyProgression = (heroData) => {
+  // Speed runners with high focus
+  if (heroData.totalPomodoros >= 50 && heroData.streakDays >= 14) {
+    if (heroData.wealth + heroData.strength + heroData.wisdom + heroData.luck >= 200) {
+      return "unlock_act_3"; // Skip to personal tormentors
+    }
+  }
+  
+  // Consistent grinders
+  if (heroData.streakDays >= 30) {
+    return "unlock_act_4"; // Skip to psychological destroyers
+  }
+  
+  return "normal_progression";
+}
+```
+
+### Failure Penalties
+```javascript
+// Breaking streak affects progression
+const handleStreakBreak = (heroData) => {
+  if (heroData.streakDays === 0) {
+    // Demon enemies get stronger
+    enemyBuffMultiplier = 1.5;
+    
+    // May get knocked back an act if streak was crucial
+    if (heroData.currentAct >= 3 && heroData.streakDays < 7) {
+      heroData.currentAct = Math.max(1, heroData.currentAct - 1);
+      displayMessage("Your enemies sense weakness. You've been pushed back!");
+    }
+  }
+}
+```
+
+### Enemy Unlock Logic
+```javascript
+const checkEnemyUnlocks = (heroData) => {
+  // Act 1: Days 1-7
+  if (heroData.streakDays >= 1) unlock("classroom_kids");
+  if (heroData.streakDays >= 3) unlock("parents_gossip");
+  if (heroData.streakDays >= 5) unlock("trash_friends");
+  
+  // Act 2: Days 8-21  
+  if (heroData.streakDays >= 8) unlock("girls_in_class");
+  if (heroData.streakDays >= 12) unlock("orcs");
+  if (heroData.streakDays >= 16) unlock("gremlins");
+  
+  // Act 3: Days 22-42 (Personal tormentors require stats + streak)
+  if (heroData.streakDays >= 22 && heroData.wisdom >= 75) unlock("rajest_mishra");
+  if (heroData.streakDays >= 28 && heroData.strength >= 75) unlock("childhood_bully");
+  if (heroData.streakDays >= 35 && heroData.wealth >= 75) unlock("girl_who_left");
+  
+  // Act 4: Days 43-70 (Psychological destroyers)
+  if (heroData.streakDays >= 45 && totalStats >= 300) unlock("joker");
+  if (heroData.streakDays >= 55 && totalStats >= 400) unlock("darth_vader");
+  
+  // Act 5: Days 71-100 (Inner demons)
+  if (heroData.streakDays >= 75 && totalStats >= 500) unlock("procrastination_demon");
+  if (heroData.streakDays >= 85 && totalStats >= 600) unlock("anxiety_overlord");
+  
+  // Final: 100+ days
+  if (heroData.streakDays >= 100 && meetsAllRequirements()) unlock("inner_demon_lord");
+}
+```
+
+## Visual Progress Tracking
+
+### Act Timeline Display
+```
+=== HERO'S JOURNEY PROGRESS ===
+Current: Day 23 of your quest
+
+Act 1: COMPLETED ✅ (Days 1-7)
+├─ Defeated: Classroom Kids, Parents' Gossip, Trash Friends
+└─ Status: "The Awakening" - Initial momentum established
+
+Act 2: COMPLETED ✅ (Days 8-21) 
+├─ Defeated: Girls in Class, Orcs, Gremlins, Stormtroopers
+└─ Status: "The Grind" - Habit formation proven
+
+Act 3: IN PROGRESS 🔄 (Days 22-42)
+├─ Current Enemy: Rajest Mishra (Academic Destroyer)
+├─ Next: Childhood Bully (unlocks Day 28)
+└─ Status: "The Test" - Facing personal demons
+
+Estimated time to Final Boss: ~77 days
+Required streak for victory: 100+ days total
+```
+
+## Summary
+
+**Act duration is primarily streak-based with stat requirements:**
+
+- **Act 1:** 7 days (prove initial consistency)
+- **Act 2:** 14 more days (21 total - habit formation) 
+- **Act 3:** 21 more days (42 total - serious commitment)
+- **Act 4:** 28 more days (70 total - major milestone)
+- **Act 5:** 30+ more days (100+ total - legendary status)
+
+The system rewards both consistency (streak) AND growth (stats), so someone who builds stats quickly but breaks streaks will face stronger enemies, while someone with perfect streaks but low stats will unlock content faster but struggle in battles.
+
+The 100+ day requirement for the final boss ensures only someone who has truly transformed their life can face their ultimate inner demon.
+```

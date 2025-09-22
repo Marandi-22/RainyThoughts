@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, Button, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context'; // Add this import
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 // Define the log entry type
 interface LogEntry {
@@ -10,12 +10,14 @@ interface LogEntry {
   date: string; // ISO string
 }
 
-interface TerminalDiaryPageProps {
+interface GrimoirePageProps {
   storageKey: string;
   title: string;
+  emoji: string;
+  description: string;
 }
 
-const TerminalDiaryPage: React.FC<TerminalDiaryPageProps> = ({ storageKey, title }) => {
+const GrimoirePage: React.FC<GrimoirePageProps> = ({ storageKey, title, emoji, description }) => {
   const [text, setText] = useState('');
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -70,10 +72,10 @@ const TerminalDiaryPage: React.FC<TerminalDiaryPageProps> = ({ storageKey, title
 
   // Delete a log
   const deleteLog = async (id: string) => {
-    Alert.alert('Delete Entry', 'Are you sure you want to delete this entry?', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert('Destroy Entry', 'Are you sure you want to erase this from the grimoire?', [
+      { text: 'Keep', style: 'cancel' },
       {
-        text: 'Delete', style: 'destructive', onPress: async () => {
+        text: 'Destroy', style: 'destructive', onPress: async () => {
           const updatedLogs = logs.filter(log => log.id !== id);
           await saveLogsToStorage(updatedLogs);
         }
@@ -84,308 +86,548 @@ const TerminalDiaryPage: React.FC<TerminalDiaryPageProps> = ({ storageKey, title
   // Format date/time
   const formatDate = (iso: string) => {
     const d = new Date(iso);
-    return d.toLocaleString();
+    return `Day ${Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24))} ago • ${d.toLocaleDateString()}`;
   };
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: '#000' }}
+      style={styles.pageContainer}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
     >
-      <View style={{ flex: 1 }}>
+      <View style={styles.parchmentContainer}>
+        {/* Page Header */}
+        <View style={styles.pageHeader}>
+          <Text style={styles.pageTitle}>{emoji} {title.toUpperCase()}</Text>
+          <Text style={styles.pageDescription}>{description}</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
         <ScrollView
-          style={styles.terminal}
+          style={styles.scrollArea}
           ref={scrollRef}
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ paddingBottom: 80 }}
+          contentContainerStyle={styles.scrollContent}
         >
-          <Text style={styles.sectionTitle}>{title}</Text>
           {logs.length === 0 && (
-            <Text style={styles.emptyText}>No entries yet.</Text>
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyText}>This grimoire page awaits your wisdom...</Text>
+              <Text style={styles.emptyHint}>Inscribe your first entry below</Text>
+            </View>
           )}
-          {logs.map((log) => (
-            <View key={log.id} style={styles.logContainer}>
-              <View style={styles.logHeader}>
-                <Text style={styles.dateText}>{formatDate(log.date)}</Text>
-                <View style={styles.actionButtons}>
-                  <TouchableOpacity onPress={() => startEdit(log.id, log.text)}>
-                    <Text style={styles.editBtn}>Edit</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => deleteLog(log.id)}>
-                    <Text style={styles.deleteBtn}>Delete</Text>
-                  </TouchableOpacity>
-                </View>
+
+          {logs.map((log, index) => (
+            <View key={log.id} style={styles.entryContainer}>
+              <View style={styles.entryHeader}>
+                <Text style={styles.entryNumber}>Entry #{logs.length - index}</Text>
+                <Text style={styles.entryDate}>{formatDate(log.date)}</Text>
               </View>
+
               {editingId === log.id ? (
-                <View style={styles.editArea}>
+                <View style={styles.editContainer}>
                   <TextInput
                     style={styles.editInput}
                     value={editingText}
                     onChangeText={setEditingText}
                     multiline
                     autoFocus
+                    placeholder="Revise your inscription..."
+                    placeholderTextColor="#8B4513"
                   />
-                  <Button title="Save" onPress={saveEdit} color="#0f0" />
-                  <Button title="Cancel" onPress={() => setEditingId(null)} color="#888" />
+                  <View style={styles.editActions}>
+                    <TouchableOpacity style={styles.saveBtn} onPress={saveEdit}>
+                      <Text style={styles.saveBtnText}>✒️ INSCRIBE</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.cancelBtn} onPress={() => setEditingId(null)}>
+                      <Text style={styles.cancelBtnText}>❌ CANCEL</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               ) : (
-                <Text style={styles.logText}>{log.text}</Text>
+                <>
+                  <Text style={styles.entryText}>{log.text}</Text>
+                  <View style={styles.entryActions}>
+                    <TouchableOpacity onPress={() => startEdit(log.id, log.text)} style={styles.actionBtn}>
+                      <Text style={styles.editBtnText}>✏️ REVISE</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => deleteLog(log.id)} style={styles.actionBtn}>
+                      <Text style={styles.deleteBtnText}>🔥 DESTROY</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
               )}
             </View>
           ))}
         </ScrollView>
-        <View style={styles.inputContainer}>
+
+        {/* Writing Area */}
+        <View style={styles.writingArea}>
+          <Text style={styles.writingLabel}>✒️ INSCRIBE NEW ENTRY</Text>
           <TextInput
-            style={styles.input}
+            style={styles.writingInput}
             value={text}
             onChangeText={setText}
-            placeholder="Type your entry..."
-            placeholderTextColor="#666"
+            placeholder="Share your demon-crushing wisdom..."
+            placeholderTextColor="#8B4513"
             multiline
             blurOnSubmit={false}
             onSubmitEditing={saveLog}
           />
-          <Button title="Enter" onPress={saveLog} color="#0f0" />
+          <TouchableOpacity style={styles.inscribeBtn} onPress={saveLog}>
+            <Text style={styles.inscribeBtnText}>📜 COMMIT TO GRIMOIRE</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </KeyboardAvoidingView>
   );
 };
 
-const books = [
-  { key: 'thoughts', title: 'Thoughts', color: '#8A2BE2' },
-  { key: 'problems', title: 'Problems', color: '#FF4500' },
-  { key: 'insights', title: 'Insights', color: '#228B22' },
-  { key: 'quotes', title: 'Quotes', color: '#4682B4' },
+const grimoireBooks = [
+  {
+    key: 'thoughts',
+    title: 'Mind Scrolls',
+    emoji: '🧠',
+    description: 'Record your inner battles and mental victories',
+    borderColor: '#8A2BE2'
+  },
+  {
+    key: 'problems',
+    title: 'Demon Catalog',
+    emoji: '👹',
+    description: 'Document the demons you face and their weaknesses',
+    borderColor: '#FF4500'
+  },
+  {
+    key: 'insights',
+    title: 'War Wisdom',
+    emoji: '⚡',
+    description: 'Capture battle-tested insights and strategies',
+    borderColor: '#FFD700'
+  },
+  {
+    key: 'quotes',
+    title: 'Power Words',
+    emoji: '🗡️',
+    description: 'Forge weapons from words that strengthen your soul',
+    borderColor: '#FF6B6B'
+  },
 ];
 
-export default function JournalScreen() {
+export default function DemonGrimoire() {
   const [selectedBook, setSelectedBook] = useState<string | null>(null);
 
   if (selectedBook) {
-    const book = books.find(b => b.key === selectedBook);
+    const book = grimoireBooks.find(b => b.key === selectedBook);
     if (!book) return null;
 
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }}>
+      <SafeAreaView style={styles.container}>
         <TouchableOpacity onPress={() => setSelectedBook(null)} style={styles.backButton}>
-          <Text style={styles.backButtonText}>← Back to Bookshelf</Text>
+          <Text style={styles.backButtonText}>⬅️ BACK TO GRIMOIRE</Text>
         </TouchableOpacity>
-        <TerminalDiaryPage storageKey={book.key} title={book.title} />
+        <GrimoirePage
+          storageKey={book.key}
+          title={book.title}
+          emoji={book.emoji}
+          description={book.description}
+        />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#1a1a1a' }}>
-      <Text style={styles.bookshelfTitle}>My Journal</Text>
-      <View style={styles.bookshelf}>
-        {books.map((book, index) => (
-          <TouchableOpacity
-            key={book.key}
-            style={[styles.book, { backgroundColor: book.color, transform: [{ rotate: '-2deg' }] }]}
-            onPress={() => setSelectedBook(book.key)}
-          >
-            <Text style={styles.bookTitle}>{book.title}</Text>
-          </TouchableOpacity>
-        ))}
+    <SafeAreaView style={styles.container}>
+      <View style={styles.grimoireContainer}>
+        {/* Grimoire Header */}
+        <View style={styles.grimoireHeader}>
+          <Text style={styles.grimoireTitle}>📜 DEMON CRUSHER'S GRIMOIRE 📜</Text>
+          <Text style={styles.grimoireSubtitle}>Ancient Wisdom for Modern Battles</Text>
+          <View style={styles.headerDivider} />
+        </View>
+
+        {/* Book Selection */}
+        <ScrollView style={styles.booksContainer} contentContainerStyle={styles.booksContent}>
+          {grimoireBooks.map((book) => (
+            <TouchableOpacity
+              key={book.key}
+              style={[styles.bookTablet, { borderColor: book.borderColor }]}
+              onPress={() => setSelectedBook(book.key)}
+            >
+              <View style={styles.tabletHeader}>
+                <Text style={styles.bookEmoji}>{book.emoji}</Text>
+                <Text style={[styles.bookTitle, { color: book.borderColor }]}>{book.title}</Text>
+              </View>
+              <Text style={styles.bookDescription}>{book.description}</Text>
+              <View style={styles.tabletFooter}>
+                <Text style={styles.tapHint}>Tap to open grimoire</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        {/* Footer Decoration */}
+        <View style={styles.grimoireFooter}>
+          <Text style={styles.footerText}>⚔️ Knowledge is the sharpest weapon ⚔️</Text>
+        </View>
       </View>
-      <View style={styles.shelf} />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  terminal: {
+  container: {
     flex: 1,
-    padding: 15,
+    backgroundColor: '#0A0A0A',
   },
-  sectionTitle: {
-    color: '#0ff',
-    fontSize: 22,
+
+  // Grimoire Main Screen
+  grimoireContainer: {
+    flex: 1,
+    backgroundColor: '#1A1A1A',
+  },
+  grimoireHeader: {
+    padding: 20,
+    alignItems: 'center',
+    backgroundColor: '#0A0A0A',
+    borderBottomWidth: 2,
+    borderBottomColor: '#FF4444',
+  },
+  grimoireTitle: {
+    fontSize: 24,
     fontWeight: 'bold',
+    color: '#FF4444',
+    fontFamily: 'monospace',
+    textAlign: 'center',
+    marginBottom: 5,
+  },
+  grimoireSubtitle: {
+    fontSize: 14,
+    color: '#CCCCCC',
+    fontFamily: 'monospace',
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  headerDivider: {
+    width: '80%',
+    height: 2,
+    backgroundColor: '#FF4444',
+    marginTop: 10,
+  },
+
+  // Book Selection
+  booksContainer: {
+    flex: 1,
+  },
+  booksContent: {
+    padding: 20,
+    gap: 20,
+  },
+  bookTablet: {
+    backgroundColor: '#222222',
+    borderWidth: 3,
+    borderRadius: 15,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
+  },
+  tabletHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 10,
-    letterSpacing: 1,
-    alignSelf: 'center',
+  },
+  bookEmoji: {
+    fontSize: 32,
+    marginRight: 15,
+  },
+  bookTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    fontFamily: 'monospace',
+    flex: 1,
+  },
+  bookDescription: {
+    fontSize: 14,
+    color: '#AAAAAA',
+    fontFamily: 'monospace',
+    lineHeight: 20,
+    marginBottom: 15,
+  },
+  tabletFooter: {
+    alignItems: 'center',
+  },
+  tapHint: {
+    fontSize: 12,
+    color: '#666666',
+    fontFamily: 'monospace',
+    fontStyle: 'italic',
+  },
+
+  // Grimoire Footer
+  grimoireFooter: {
+    padding: 15,
+    backgroundColor: '#0A0A0A',
+    borderTopWidth: 1,
+    borderTopColor: '#333333',
+    alignItems: 'center',
+  },
+  footerText: {
+    fontSize: 12,
+    color: '#888888',
+    fontFamily: 'monospace',
+    fontStyle: 'italic',
+  },
+
+  // Page Container
+  pageContainer: {
+    flex: 1,
+    backgroundColor: '#1A1A1A',
+  },
+  parchmentContainer: {
+    flex: 1,
+    backgroundColor: '#2A1F1A',
+    margin: 10,
+    borderRadius: 15,
+    borderWidth: 3,
+    borderColor: '#8B4513',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+
+  // Page Header
+  pageHeader: {
+    padding: 20,
+    backgroundColor: '#3A2F2A',
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    borderBottomWidth: 2,
+    borderBottomColor: '#8B4513',
+  },
+  pageTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FFD700',
+    fontFamily: 'monospace',
+    textAlign: 'center',
+    marginBottom: 5,
+  },
+  pageDescription: {
+    fontSize: 12,
+    color: '#DEB887',
+    fontFamily: 'monospace',
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  dividerLine: {
+    width: '100%',
+    height: 2,
+    backgroundColor: '#8B4513',
+    marginTop: 10,
+  },
+
+  // Scroll Area
+  scrollArea: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 20,
+    paddingBottom: 100,
+  },
+
+  // Empty State
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 40,
   },
   emptyText: {
-    color: '#666',
-    fontStyle: 'italic',
+    fontSize: 16,
+    color: '#DEB887',
+    fontFamily: 'monospace',
     textAlign: 'center',
-    marginVertical: 30,
+    marginBottom: 10,
+    fontStyle: 'italic',
   },
-  logContainer: {
-    backgroundColor: '#111',
+  emptyHint: {
+    fontSize: 12,
+    color: '#8B4513',
+    fontFamily: 'monospace',
+    textAlign: 'center',
+  },
+
+  // Entry Container
+  entryContainer: {
+    backgroundColor: '#3A2F2A',
+    borderWidth: 2,
+    borderColor: '#8B4513',
     borderRadius: 10,
     padding: 15,
     marginBottom: 15,
-    borderLeftWidth: 4,
-    borderLeftColor: '#0f0',
-    shadowColor: '#0f0',
-    shadowOpacity: 0.1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 4,
   },
-  logHeader: {
+  entryHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 10,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#8B4513',
   },
-  dateText: {
-    color: '#0ff',
-    fontSize: 13,
+  entryNumber: {
+    fontSize: 12,
+    color: '#FFD700',
+    fontFamily: 'monospace',
+    fontWeight: 'bold',
+  },
+  entryDate: {
+    fontSize: 11,
+    color: '#DEB887',
+    fontFamily: 'monospace',
     fontStyle: 'italic',
   },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  editBtn: {
-    color: '#ff0',
-    marginRight: 10,
-    fontWeight: 'bold',
-  },
-  deleteBtn: {
-    color: '#f55',
-    fontWeight: 'bold',
-  },
-  logText: {
-    color: '#0f0',
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  entryText: {
     fontSize: 16,
-    marginBottom: 4,
-    marginLeft: 5,
-    lineHeight: 22,
+    color: '#F5DEB3',
+    fontFamily: 'monospace',
+    lineHeight: 24,
+    marginBottom: 12,
   },
-  inputContainer: {
+  entryActions: {
     flexDirection: 'row',
-    padding: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#222',
-    backgroundColor: '#000',
-    alignItems: 'center',
-    minHeight: 54,
+    justifyContent: 'flex-end',
+    gap: 15,
   },
-  input: {
-    flex: 1,
-    color: '#0f0',
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-    fontSize: 16,
-    padding: 10,
-    marginRight: 10,
-    backgroundColor: '#111',
-    borderRadius: 6,
-    minHeight: 40,
-    maxHeight: 90,
-    textAlignVertical: 'top',
+  actionBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
-  navScroll: {
-    flexDirection: 'row',
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-    paddingVertical: 12, // increased
-    backgroundColor: '#000',
-    marginBottom: 6,
-    borderBottomWidth: 1.5, // thinner
-    borderBottomColor: '#39FF14',
-    paddingHorizontal: 8, // more padding
-    minHeight: 54, // ensure height
-  },
-  tabBtn: {
-    paddingVertical: 8, // increased
-    paddingHorizontal: 18, // increased
-    borderRadius: 6,
-    marginHorizontal: 4,
-    minWidth: 80, // ensure width for text
-  },
-  activeTabBtn: {
-    borderBottomWidth: 2,
-    borderBottomColor: '#39FF14',
-    backgroundColor: '#111',
-  },
-  tabBtnText: {
-    color: '#39FF14',
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-    fontSize: 17, // increased
+  editBtnText: {
+    fontSize: 10,
+    color: '#87CEEB',
+    fontFamily: 'monospace',
     fontWeight: 'bold',
-    letterSpacing: 1,
-    paddingBottom: 2,
   },
-  activeTabBtnText: {
-    color: '#39FF14',
-    textShadowColor: '#39FF14',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 6,
+  deleteBtnText: {
+    fontSize: 10,
+    color: '#FF6B6B',
+    fontFamily: 'monospace',
+    fontWeight: 'bold',
   },
-  editArea: {
-    marginTop: 8,
-    marginBottom: 4,
+
+  // Edit Container
+  editContainer: {
+    marginTop: 5,
   },
   editInput: {
-    color: '#0f0',
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    backgroundColor: '#4A3F3A',
+    borderWidth: 2,
+    borderColor: '#8B4513',
+    borderRadius: 8,
+    padding: 12,
+    color: '#F5DEB3',
+    fontFamily: 'monospace',
     fontSize: 16,
-    backgroundColor: '#222',
-    borderRadius: 6,
-    padding: 8,
-    marginBottom: 6,
-    minHeight: 40,
+    minHeight: 60,
+    textAlignVertical: 'top',
+    marginBottom: 10,
   },
-  bookshelfTitle: {
-    color: '#fff',
-    fontSize: 32,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginVertical: 20,
-    fontFamily: 'serif',
-  },
-  bookshelf: {
+  editActions: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'flex-end',
-    height: 250,
-    paddingHorizontal: 20,
+    justifyContent: 'flex-end',
+    gap: 10,
   },
-  book: {
-    width: 40,
-    height: 200,
-    borderRadius: 4,
-    marginHorizontal: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 5, height: 5 },
-    shadowOpacity: 0.5,
-    shadowRadius: 5,
-    elevation: 10,
+  saveBtn: {
+    backgroundColor: '#228B22',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
   },
-  bookTitle: {
-    color: '#fff',
+  saveBtnText: {
+    color: '#FFFFFF',
+    fontSize: 10,
     fontWeight: 'bold',
-    fontSize: 16,
-    transform: [{ rotate: '90deg' }],
-    width: 180,
+    fontFamily: 'monospace',
+  },
+  cancelBtn: {
+    backgroundColor: '#8B4513',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  cancelBtnText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: 'bold',
+    fontFamily: 'monospace',
+  },
+
+  // Writing Area
+  writingArea: {
+    backgroundColor: '#3A2F2A',
+    borderTopWidth: 2,
+    borderTopColor: '#8B4513',
+    padding: 15,
+  },
+  writingLabel: {
+    fontSize: 12,
+    color: '#FFD700',
+    fontFamily: 'monospace',
+    fontWeight: 'bold',
+    marginBottom: 8,
     textAlign: 'center',
   },
-  shelf: {
-    height: 10,
-    backgroundColor: '#4a2c2a',
-    marginHorizontal: 20,
-    borderRadius: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.7,
-    shadowRadius: 10,
-    elevation: 5,
+  writingInput: {
+    backgroundColor: '#4A3F3A',
+    borderWidth: 2,
+    borderColor: '#8B4513',
+    borderRadius: 8,
+    padding: 12,
+    color: '#F5DEB3',
+    fontFamily: 'monospace',
+    fontSize: 16,
+    minHeight: 60,
+    maxHeight: 120,
+    textAlignVertical: 'top',
+    marginBottom: 10,
   },
+  inscribeBtn: {
+    backgroundColor: '#8B4513',
+    borderWidth: 2,
+    borderColor: '#DEB887',
+    borderRadius: 8,
+    padding: 12,
+    alignItems: 'center',
+  },
+  inscribeBtnText: {
+    color: '#FFD700',
+    fontSize: 14,
+    fontWeight: 'bold',
+    fontFamily: 'monospace',
+  },
+
+  // Back Button
   backButton: {
-    padding: 10,
-    backgroundColor: '#333',
+    backgroundColor: '#8B4513',
+    padding: 12,
+    margin: 10,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#DEB887',
   },
   backButtonText: {
-    color: '#fff',
+    color: '#FFD700',
+    fontSize: 14,
+    fontWeight: 'bold',
     textAlign: 'center',
+    fontFamily: 'monospace',
   },
 });

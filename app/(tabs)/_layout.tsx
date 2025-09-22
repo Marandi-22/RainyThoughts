@@ -9,11 +9,11 @@ export default function TabLayout() {
   const colorScheme = useColorScheme();
   const insets = useSafeAreaInsets(); // <-- Add this
 
-  const neonColor = '#39FF14';
-  const dimColor = '#00FF41AA';
+  const activeColor = '#FF4444';
+  const inactiveColor = '#666666';
 
   const TabLabel = ({ label }: { label: string }) => (
-    <Text style={{ color: neonColor, fontSize: 12, textShadowColor: dimColor, textShadowRadius: 4 }}>
+    <Text style={{ color: activeColor, fontSize: 12, textShadowColor: activeColor, textShadowRadius: 4 }}>
       {label}
     </Text>
   );
@@ -22,8 +22,8 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: neonColor,
-        tabBarInactiveTintColor: dimColor,
+        tabBarActiveTintColor: activeColor,
+        tabBarInactiveTintColor: inactiveColor,
         tabBarBackground: () => <View style={styles.tabBarBackground} />,
         tabBarStyle: Platform.select({
           ios: {
@@ -35,7 +35,7 @@ export default function TabLayout() {
           },
           android: {
             height: 70 + insets.bottom, // <-- Add safe area
-            backgroundColor: '#101010EE',
+            backgroundColor: '#000000EE',
             borderTopWidth: 0,
             elevation: 0,
             paddingBottom: insets.bottom, // <-- Add safe area
@@ -45,7 +45,7 @@ export default function TabLayout() {
         tabBarLabelStyle: {
           fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
           fontSize: 13,
-          textShadowColor: dimColor,
+          textShadowColor: activeColor,
           textShadowOffset: { width: 0, height: 0 },
           textShadowRadius: 6,
         },
@@ -54,19 +54,15 @@ export default function TabLayout() {
       {/* Index route - this will be the default home screen */}
       <Tabs.Screen
         name="index"
-        options={{ title: 'Home', tabBarIcon: () => <TabLabel label="🏠" /> }}
+        options={{ title: 'Hero', tabBarIcon: () => <TabLabel label="🔥" /> }}
       />
       <Tabs.Screen
         name="pomodoro"
-        options={{ title: 'Pomodoro', tabBarIcon: () => <TabLabel label="⏱️" /> }}
+        options={{ title: 'Battle', tabBarIcon: () => <TabLabel label="⚔️" /> }}
       />
       <Tabs.Screen
         name="journal"
-        options={{ title: 'Journal', tabBarIcon: () => <TabLabel label="📓" /> }}
-      />
-      <Tabs.Screen
-        name="todo"
-        options={{ title: 'To-Do', tabBarIcon: () => <TabLabel label="📋" /> }}
+        options={{ title: 'Grimoire', tabBarIcon: () => <TabLabel label="📜" /> }}
       />
     </Tabs>
   );
@@ -74,8 +70,9 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   tabBarBackground: {
-    backgroundColor: '#101010EE',
-    borderTopWidth: 0,
+    backgroundColor: '#000000EE',
+    borderTopWidth: 1,
+    borderTopColor: '#FF4444',
     flex: 1,
   },
 });
