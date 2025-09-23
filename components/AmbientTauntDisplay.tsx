@@ -6,9 +6,10 @@ import { BattleTauntManager } from '@/utils/battleTauntManager';
 interface AmbientTauntDisplayProps {
   availableEnemies: Enemy[];
   visible: boolean;
+  onDismiss?: () => void;
 }
 
-export default function AmbientTauntDisplay({ availableEnemies, visible }: AmbientTauntDisplayProps) {
+export default function AmbientTauntDisplay({ availableEnemies, visible, onDismiss }: AmbientTauntDisplayProps) {
   const [currentTaunt, setCurrentTaunt] = useState<string>('');
   const [currentEnemy, setCurrentEnemy] = useState<Enemy | null>(null);
   const [fadeAnim] = useState(new Animated.Value(0));
@@ -92,13 +93,20 @@ export default function AmbientTauntDisplay({ availableEnemies, visible }: Ambie
 
   return (
     <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
-      <View style={[styles.tauntCard, { borderColor: themeColor }]}>
+      <TouchableOpacity
+        style={[styles.tauntCard, { borderColor: themeColor }]}
+        onPress={onDismiss}
+        activeOpacity={0.8}
+      >
         <View style={styles.enemyHeader}>
           <Text style={styles.enemyIcon}>{enemyIcon}</Text>
           <View style={styles.enemyInfo}>
             <Text style={styles.enemyName}>{currentEnemy.name}</Text>
             <Text style={styles.threatLevel}>THREAT LEVEL: {currentEnemy.tier.toUpperCase().replace('_', ' ')}</Text>
           </View>
+          <TouchableOpacity onPress={onDismiss} style={styles.dismissButton}>
+            <Text style={styles.dismissText}>✕</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={[styles.tauntBubble, { backgroundColor: themeColor + '22' }]}>
@@ -107,10 +115,10 @@ export default function AmbientTauntDisplay({ availableEnemies, visible }: Ambie
 
         <View style={styles.warningFooter}>
           <Text style={styles.warningText}>
-            💀 This demon awaits your next pomodoro session 💀
+            💀 Tap to dismiss or fight this demon 💀
           </Text>
         </View>
-      </View>
+      </TouchableOpacity>
     </Animated.View>
   );
 }
@@ -180,5 +188,14 @@ const styles = StyleSheet.create({
     color: '#888888',
     fontFamily: 'monospace',
     textAlign: 'center',
+  },
+  dismissButton: {
+    padding: 8,
+    marginLeft: 10,
+  },
+  dismissText: {
+    color: '#FF4444',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
 });

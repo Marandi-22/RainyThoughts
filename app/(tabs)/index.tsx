@@ -155,9 +155,8 @@ const DemonCrusherHome: React.FC = () => {
     heroData.stats,
     heroData.totalPomodoros
   );
-  const availableEnemies = unlockedEnemies.filter(enemy =>
-    !heroData.defeatedEnemies.includes(enemy.id)
-  );
+  // All enemies are always available for taunts and battles
+  const availableEnemies = unlockedEnemies;
 
   const totalStats = Object.values(heroData.stats).reduce((sum, val) => sum + val, 0);
   const lifeProgress = Math.max(0, Math.min(100, (daysLeft / 1095) * 100)); // Assuming 3 years total
@@ -211,7 +210,7 @@ const DemonCrusherHome: React.FC = () => {
           <View style={styles.progressInfo}>
             <Text style={styles.progressText}>Streak: {heroData.streakDays} days</Text>
             <Text style={styles.progressText}>Sessions: {heroData.totalPomodoros}</Text>
-            <Text style={styles.progressText}>Defeated: {heroData.defeatedEnemies.length} enemies</Text>
+            <Text style={styles.progressText}>Total Kills: {Object.values(heroData.enemyKillCounts || {}).reduce((sum, kills) => sum + kills, 0)}</Text>
             <Text style={styles.progressText}>Total Power: {totalStats}</Text>
           </View>
         </View>

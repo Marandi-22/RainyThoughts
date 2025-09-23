@@ -32,6 +32,14 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
+
+# API keys and secrets
+**/apikey*
+**/api-key*
+**/*key*.js
+**/*key*.ts
+services/tauntService.ts
 
 # typescript
 *.tsbuildinfo

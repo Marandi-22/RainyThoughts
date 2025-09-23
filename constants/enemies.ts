@@ -52,7 +52,6 @@ export interface Enemy {
     minLevel?: number;
     minStats?: Partial<Record<StatType, number>>;
     minTotalStats?: number;
-    defeatedEnemies?: string[];
     minPomodoros?: number;
   };
 

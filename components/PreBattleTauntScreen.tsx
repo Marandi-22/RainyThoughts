@@ -137,6 +137,7 @@ export default function PreBattleTauntScreen({
                 </Text>
               </TouchableOpacity>
 
+
               <TouchableOpacity
                 style={styles.skipButton}
                 onPress={onSkip}

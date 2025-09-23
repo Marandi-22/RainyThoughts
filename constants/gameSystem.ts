@@ -25,7 +25,7 @@ export interface HeroData {
   // Story progression (driven by Pomodoros)
   currentAct: number;
   currentEnemy: string | null;
-  defeatedEnemies: string[];
+  enemyKillCounts: { [enemyId: string]: number }; // Track how many times each enemy was killed
   availableEnemies: string[];
 
   // Performance tracking
@@ -267,8 +267,9 @@ export const ACT_DEFINITIONS: ActProgress[] = [
 
 // Calculate current act based on progress
 export const getCurrentAct = (heroData: HeroData): number => {
-  const { streakDays, stats, defeatedEnemies, totalPomodoros, level } = heroData;
+  const { streakDays, stats, enemyKillCounts, totalPomodoros, level } = heroData;
   const totalStats = Object.values(stats).reduce((sum, val) => sum + val, 0);
+  const totalKills = Object.values(enemyKillCounts || {}).reduce((sum, kills) => sum + kills, 0);
 
   // Act 6: Final boss requirements
   if (
@@ -277,7 +278,7 @@ export const getCurrentAct = (heroData: HeroData): number => {
     stats.strength >= 200 &&
     stats.wisdom >= 200 &&
     stats.luck >= 150 &&
-    defeatedEnemies.length >= 20
+    totalKills >= 20
   ) {
     return 6;
   }
@@ -326,7 +327,7 @@ export const createDefaultHero = (): HeroData => ({
 
   currentAct: 1,
   currentEnemy: null,
-  defeatedEnemies: [],
+  enemyKillCounts: {},
   availableEnemies: [],
 
   streakDays: 0,

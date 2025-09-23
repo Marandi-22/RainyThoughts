@@ -10,15 +10,20 @@ interface AutoBattleScreenProps {
   onVictory: (expGained: number, statsGained: any) => void;
   onDefeat: () => void;
   onFlee: () => void;
+  isGrindingMode?: boolean;
+  canWin?: boolean;
+  pomodoroTimeLeft?: number; // Time left in pomodoro session (in seconds)
 }
 
-export default function AutoBattleScreen({ enemy, heroData, onVictory, onDefeat, onFlee }: AutoBattleScreenProps) {
+export default function AutoBattleScreen({ enemy, heroData, onVictory, onDefeat, onFlee, isGrindingMode = false, canWin = true, pomodoroTimeLeft = 1500 }: AutoBattleScreenProps) {
   const [enemyCurrentHp, setEnemyCurrentHp] = useState(enemy.hp);
   const [heroCurrentHp, setHeroCurrentHp] = useState(heroData.hp);
   const [battleLog, setBattleLog] = useState<string[]>([]);
   const [battlePhase, setBattlePhase] = useState<'intro' | 'combat' | 'victory' | 'defeat'>('intro');
   const [currentAction, setCurrentAction] = useState<string>('');
   const [turnCount, setTurnCount] = useState(0);
+  const [battleTimer, setBattleTimer] = useState<number>(pomodoroTimeLeft);
+  const [lastTurnTime, setLastTurnTime] = useState<number>(Date.now());
 
   // Animation values
   const [shakeAnimation] = useState(new Animated.Value(0));
@@ -27,18 +32,110 @@ export default function AutoBattleScreen({ enemy, heroData, onVictory, onDefeat,
 
   useEffect(() => {
     if (battlePhase === 'intro') {
-      startAutoBattle();
+      startTimerBasedBattle();
     }
   }, []);
 
-  const startAutoBattle = async () => {
-    setBattleLog(['🔥 BATTLE BEGINS! 🔥']);
-    setCurrentAction('The demon emerges from the shadows...');
+  // Timer-based battle system
+  useEffect(() => {
+    if (battlePhase === 'combat' && battleTimer > 0) {
+      const interval = setInterval(() => {
+        setBattleTimer(prev => {
+          if (prev <= 1) {
+            // Pomodoro ended - resolve battle based on current HP
+            if (enemyCurrentHp <= heroCurrentHp) {
+              setBattlePhase('victory');
+              handleVictory();
+            } else {
+              setBattlePhase('defeat');
+              handleDefeat();
+            }
+            return 0;
+          }
+          return prev - 1;
+        });
+
+        // Execute turns every 10 seconds
+        const now = Date.now();
+        if (now - lastTurnTime >= 10000) {
+          executeTurn();
+          setLastTurnTime(now);
+        }
+      }, 1000);
+
+      return () => clearInterval(interval);
+    }
+  }, [battlePhase, battleTimer, lastTurnTime, enemyCurrentHp, heroCurrentHp]);
+
+  const startTimerBasedBattle = async () => {
+    setBattleLog(['🔥 EXTENDED BATTLE BEGINS! 🔥']);
+    setCurrentAction('Prepare for a long battle during your focus session...');
 
     setTimeout(() => {
       setBattlePhase('combat');
-      executeAutoBattle();
+      setLastTurnTime(Date.now());
+      setBattleLog(prev => [...prev, '⚔️ Battle will continue throughout your pomodoro session!']);
     }, 2000);
+  };
+
+  const executeTurn = () => {
+    if (battlePhase !== 'combat' || enemyCurrentHp <= 0 || heroCurrentHp <= 0) return;
+
+    setTurnCount(prev => prev + 1);
+    const heroStat = getRandomStat();
+    const heroDamage = calculateHeroDamage(heroStat);
+    const enemyDamage = calculateEnemyDamage();
+
+    // Hero attacks first
+    const newEnemyHp = Math.max(0, enemyCurrentHp - heroDamage);
+    setEnemyCurrentHp(newEnemyHp);
+
+    setBattleLog(prev => [...prev,
+      `💥 You attack with ${heroStat} dealing ${heroDamage} damage! (Enemy: ${newEnemyHp}/${enemy.hp} HP)`
+    ]);
+
+    if (newEnemyHp > 0) {
+      // Enemy counter-attacks
+      const newHeroHp = Math.max(0, heroCurrentHp - enemyDamage);
+      setHeroCurrentHp(newHeroHp);
+
+      setBattleLog(prev => [...prev,
+        `🔥 ${enemy.name} attacks dealing ${enemyDamage} damage! (You: ${newHeroHp}/${heroData.hp} HP)`
+      ]);
+
+      if (newHeroHp <= 0) {
+        setBattlePhase('defeat');
+        handleDefeat();
+      }
+    } else {
+      setBattlePhase('victory');
+      handleVictory();
+    }
+
+    animateHpBar(true);
+    animateHpBar(false);
+  };
+
+  const executeTauntOnlyEncounter = async () => {
+    const tauntSequences = [
+      "💀 The demon looks down at you with contempt...",
+      "😈 Your skills are far too weak to challenge me!",
+      "👹 You dare approach a being of my power?",
+      "🔥 This is what TRUE strength looks like!",
+      "💥 You need much more training before facing me!",
+      "⚡ Feel the weight of my overwhelming presence!",
+      "💀 Run along, little warrior. Come back when you're stronger."
+    ];
+
+    for (let i = 0; i < tauntSequences.length; i++) {
+      setCurrentAction(tauntSequences[i]);
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      setBattleLog(prev => [...prev, tauntSequences[i]]);
+    }
+
+    // End with intimidation defeat
+    setBattlePhase('defeat');
+    await handleTauntOnlyDefeat();
   };
 
   const executeAutoBattle = async () => {
@@ -122,27 +219,38 @@ export default function AutoBattleScreen({ enemy, heroData, onVictory, onDefeat,
   };
 
   const handleVictory = async (isDraw: boolean = false) => {
-    setCurrentAction('🎉 VICTORY! The demon is crushed! 🎉');
+    if (isGrindingMode) {
+      setCurrentAction('🔄 GRINDING VICTORY! Experience gained! 🔄');
+    } else {
+      setCurrentAction('🎉 VICTORY! The demon is crushed! 🎉');
+    }
 
     try {
       const victoryTaunt = await BattleTauntManager.getVictoryTaunt(enemy);
       setBattleLog(prev => [...prev,
         `✅ ${enemy.name} is DEFEATED!`,
         `💬 "${victoryTaunt}"`,
-        isDraw ? '⚖️ Hard-fought battle!' : '🏆 Flawless victory!'
+        isGrindingMode
+          ? '🔄 Grinding success! (Reduced rewards)'
+          : isDraw ? '⚖️ Hard-fought battle!' : '🏆 Flawless victory!'
       ]);
     } catch (error) {
       setBattleLog(prev => [...prev, `✅ ${enemy.name} is DEFEATED!`]);
     }
 
-    const expGained = isDraw ? Math.floor(enemy.hp * 0.7) : enemy.hp;
-    const statGained = isDraw ? Math.floor(enemy.hp / 15) : Math.floor(enemy.hp / 10);
+    const baseExpGained = isDraw ? Math.floor(enemy.hp * 0.7) : enemy.hp;
+    const baseStatGained = isDraw ? Math.floor(enemy.hp / 15) : Math.floor(enemy.hp / 10);
+
+    // Apply grinding penalty in the AutoBattleScreen (will be applied again in handleBattleVictory)
+    const expGained = isGrindingMode ? Math.floor(baseExpGained * 0.5) : baseExpGained;
+    const statGained = isGrindingMode ? Math.floor(baseStatGained * 0.5) : baseStatGained;
+
     const randomStat = getRandomStat();
     const statsGained = { [randomStat]: statGained };
 
     setBattleLog(prev => [...prev,
-      `💫 +${expGained} EXP gained!`,
-      `📈 +${statGained} ${randomStat.toUpperCase()} gained!`
+      `💫 +${expGained} EXP gained!${isGrindingMode ? ' (Grinding penalty applied)' : ''}`,
+      `📈 +${statGained} ${randomStat.toUpperCase()} gained!${isGrindingMode ? ' (Grinding penalty applied)' : ''}`
     ]);
 
     setTimeout(() => onVictory(expGained, statsGained), 3000);
@@ -168,36 +276,72 @@ export default function AutoBattleScreen({ enemy, heroData, onVictory, onDefeat,
     setTimeout(onDefeat, 3000);
   };
 
+  const handleTauntOnlyDefeat = async () => {
+    setCurrentAction('💀 OVERWHELMED! You flee before the superior demon... 💀');
+
+    try {
+      const defeatTaunt = await BattleTauntManager.getDefeatTaunt(enemy);
+      setBattleLog(prev => [...prev,
+        `❌ You have been intimidated by ${enemy.name}!`,
+        `💬 "${defeatTaunt}"`,
+        `📚 Return when you're stronger! You need more EXP to challenge this foe.`
+      ]);
+    } catch (error) {
+      setBattleLog(prev => [...prev,
+        `❌ You have been intimidated by ${enemy.name}!`,
+        `📚 Return when you're stronger! You need more EXP to challenge this foe.`
+      ]);
+    }
+
+    setTimeout(onDefeat, 3000);
+  };
+
   const getRandomStat = (): keyof typeof heroData.stats => {
     const stats: (keyof typeof heroData.stats)[] = ['wealth', 'strength', 'wisdom', 'luck'];
     return stats[Math.floor(Math.random() * stats.length)];
   };
 
   const calculateHeroDamage = (stat: keyof typeof heroData.stats): number => {
-    const baseDamage = Math.floor(heroData.stats[stat] * 0.8);
-    const randomBonus = Math.floor(Math.random() * 25) + 10;
+    const playerLevel = Math.floor(heroData.exp / 200) + 1; // Harder leveling (200 exp per level)
+    const enemyLevel = Math.floor(enemy.hp / 15); // Enemies are relatively stronger
 
-    // Bonus damage if attacking enemy's weakness
-    const weaknessBonus = stat === enemy.weakness ? 15 : 0;
+    // Much harder damage scaling - severely reduced base damage
+    const levelDifference = playerLevel - enemyLevel;
+    const baseMultiplier = Math.max(0.15, 0.25 + (levelDifference * 0.05)); // Much lower multiplier
 
-    return Math.max(10, baseDamage + randomBonus + weaknessBonus);
+    const statValue = heroData.stats[stat];
+    const baseDamage = Math.floor(statValue * baseMultiplier * 0.4); // Further reduced by 0.4
+    const randomVariation = Math.floor(Math.random() * 8) + 2; // Much less random bonus
+
+    // Smaller bonuses/penalties
+    const weaknessBonus = stat === enemy.weakness ? Math.floor(baseDamage * 0.2) : 0;
+    const strengthPenalty = stat === enemy.strength ? Math.floor(baseDamage * 0.3) : 0;
+
+    // Much lower minimum damage
+    return Math.max(2, baseDamage + randomVariation + weaknessBonus - strengthPenalty);
   };
 
   const calculateEnemyDamage = (): number => {
-    // Scale enemy damage based on tier
+    const playerLevel = Math.floor(heroData.exp / 200) + 1; // Match hero leveling
+    const enemyLevel = Math.floor(enemy.hp / 15); // Match enemy scaling
+
+    // Much higher enemy damage to make battles grindier
     const tierMultiplier = {
-      'small_fry': 0.6,
-      'personal_tormentor': 0.8,
-      'psychological_destroyer': 1.0,
-      'inner_demon': 1.2,
-      'ultimate_boss': 1.5
+      'small_fry': 1.2,
+      'personal_tormentor': 1.5,
+      'psychological_destroyer': 1.8,
+      'inner_demon': 2.1,
+      'ultimate_boss': 2.5
     };
 
-    const multiplier = tierMultiplier[enemy.tier] || 0.8;
-    const baseDamage = Math.floor(enemy.hp * 0.1 * multiplier);
-    const randomBonus = Math.floor(Math.random() * 15) + 5;
+    const levelDifference = enemyLevel - playerLevel;
+    const levelMultiplier = Math.max(1.2, 1.5 + (levelDifference * 0.25)); // Much higher scaling
 
-    return Math.max(5, baseDamage + randomBonus);
+    const multiplier = (tierMultiplier[enemy.tier] || 1.2) * levelMultiplier;
+    const baseDamage = Math.floor(enemy.hp * 0.18 * multiplier); // Higher base damage
+    const randomVariation = Math.floor(Math.random() * 18) + 12; // Higher random damage
+
+    return Math.max(15, baseDamage + randomVariation); // Higher minimum damage
   };
 
   const animateHpBar = (isEnemy: boolean) => {

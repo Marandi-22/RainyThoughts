@@ -6,7 +6,6 @@ import TaskCompletionInterface from "@/components/TaskCompletionInterface";
 import TodoManager, { Todo } from "@/components/TodoManager";
 import TodoCompletionSelector from "@/components/TodoCompletionSelector";
 import PreBattleTauntScreen from "@/components/PreBattleTauntScreen";
-import AmbientTauntDisplay from "@/components/AmbientTauntDisplay";
 import { QuestManager } from "@/utils/questUtils";
 import { BattleTauntManager } from "@/utils/battleTauntManager";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -36,8 +35,6 @@ export default function DemonCrusherRPG() {
   // Battle System
   const [showBattle, setShowBattle] = useState(false);
   const [currentEnemy, setCurrentEnemy] = useState<Enemy | null>(null);
-  const [showPreBattleTaunt, setShowPreBattleTaunt] = useState(false);
-  const [pendingEnemy, setPendingEnemy] = useState<Enemy | null>(null);
 
   // Timer System
   const [pomodoroMinutes, setPomodoroMinutes] = useState(25);
@@ -53,7 +50,15 @@ export default function DemonCrusherRPG() {
   const [showTodoManager, setShowTodoManager] = useState(false);
   const [showTodoSelector, setShowTodoSelector] = useState(false);
   const [activeTodos, setActiveTodos] = useState<Todo[]>([]);
-  const [showAmbientTaunts, setShowAmbientTaunts] = useState(true);
+  const [selectedTauntEnemy, setSelectedTauntEnemy] = useState<Enemy | null>(null);
+  const [currentLiveTaunt, setCurrentLiveTaunt] = useState<string>('');
+  const [battleProgression, setBattleProgression] = useState({
+    enemyDeathCount: 0,
+    playerStrengthMultiplier: 1.0,
+    enemyFearLevel: 0, // 0-100, higher = more afraid
+    battleNumber: 0,
+    isEnemyTrapped: false
+  });
 
   const intervalRef = useRef<number | null>(null);
 
@@ -62,13 +67,13 @@ export default function DemonCrusherRPG() {
     loadHeroData();
     loadActiveTodos();
 
-    // Pre-generate taunts for available enemies to avoid waiting
+    // Pre-generate AI taunts for better performance
     const preGenerateTaunts = async () => {
       try {
         await BattleTauntManager.preGenerateTaunts(availableEnemies);
-        console.log('Pre-battle taunts cached for available enemies');
+        console.log('AI taunts pre-generated for progression system');
       } catch (error) {
-        console.error('Error pre-generating taunts:', error);
+        console.error('Error pre-generating AI taunts:', error);
       }
     };
 
@@ -79,7 +84,9 @@ export default function DemonCrusherRPG() {
 
   // Update unlocked enemies when hero data changes
   useEffect(() => {
-    updateUnlockedEnemies();
+    if (heroData && heroData.stats) {
+      updateUnlockedEnemies();
+    }
   }, [heroData.streakDays, heroData.stats, heroData.totalPomodoros]);
 
   // Countdown logic
@@ -120,6 +127,25 @@ export default function DemonCrusherRPG() {
       const stored = await AsyncStorage.getItem('heroData');
       if (stored) {
         const data = JSON.parse(stored);
+
+        // Migration: Convert old defeatedEnemies array to new enemyKillCounts object
+        if (data.defeatedEnemies && !data.enemyKillCounts) {
+          data.enemyKillCounts = {};
+          // Convert defeated enemies to kill counts of 1
+          if (Array.isArray(data.defeatedEnemies)) {
+            data.defeatedEnemies.forEach((enemyId: string) => {
+              data.enemyKillCounts[enemyId] = 1;
+            });
+          }
+          // Remove old property
+          delete data.defeatedEnemies;
+        }
+
+        // Ensure enemyKillCounts exists
+        if (!data.enemyKillCounts) {
+          data.enemyKillCounts = {};
+        }
+
         setHeroData(data);
       }
     } catch (error) {
@@ -136,24 +162,27 @@ export default function DemonCrusherRPG() {
   };
 
   const updateUnlockedEnemies = () => {
+    // Ensure heroData is properly loaded before processing
+    if (!heroData || !heroData.stats) {
+      return;
+    }
+
     const unlocked = getUnlockedEnemies(
-      heroData.streakDays,
-      heroData.stats,
-      heroData.totalPomodoros
+      heroData.streakDays || 0,
+      heroData.stats || { wealth: 0, strength: 0, wisdom: 0, luck: 0 },
+      heroData.totalPomodoros || 0
     );
     setUnlockedEnemies(unlocked);
 
-    // Available enemies are unlocked enemies not yet defeated
-    const available = unlocked.filter(enemy =>
-      !heroData.defeatedEnemies.includes(enemy.id)
-    );
+    // Available enemies are ALL ENEMIES for maximum taunt availability
+    const available = ALL_ENEMIES; // Make EVERYTHING available for grinding and taunts
     setAvailableEnemies(available);
 
     console.log('🔓 Enemies updated:', {
       streak: heroData.streakDays,
       totalStats: Object.values(heroData.stats).reduce((sum, val) => sum + val, 0),
       totalPomodoros: heroData.totalPomodoros,
-      defeated: heroData.defeatedEnemies.length,
+      defeated: Object.keys(heroData.enemyKillCounts || {}).length,
       unlocked: unlocked.length,
       available: available.length,
       nextAvailable: available.slice(0, 3).map(e => e.name)
@@ -191,7 +220,7 @@ export default function DemonCrusherRPG() {
       streak: newHeroData.streakDays,
       stats: newHeroData.stats,
       totalPomodoros: newHeroData.totalPomodoros,
-      defeatedEnemies: newHeroData.defeatedEnemies
+      enemyKillCounts: newHeroData.enemyKillCounts
     });
 
     // Check for available enemies to battle
@@ -220,7 +249,7 @@ export default function DemonCrusherRPG() {
       // If we have unlocked enemies but no available ones, trigger the first unlocked
       if (forceUnlocked.length > 0) {
         const firstUnlocked = forceUnlocked.find(enemy =>
-          !newHeroData.defeatedEnemies.includes(enemy.id)
+          true // All enemies are always available for grinding
         );
         if (firstUnlocked) {
           console.log('Forcing battle with:', firstUnlocked.name);
@@ -259,40 +288,309 @@ export default function DemonCrusherRPG() {
   };
 
   const triggerBattle = (enemy: Enemy) => {
-    console.log('Triggering battle with:', enemy.name);
-    setPendingEnemy(enemy);
-    setShowPreBattleTaunt(true);
-    setShowAmbientTaunts(false); // Hide ambient taunts during battle
-    setRunning(false);
+    setCurrentEnemy(enemy);
+    setShowBattle(true);
   };
 
-  const handleStartBattle = () => {
-    if (pendingEnemy) {
-      setCurrentEnemy(pendingEnemy);
-      setShowPreBattleTaunt(false);
-      setShowBattle(true);
-      setPendingEnemy(null);
+  const selectEnemyForTaunts = async (enemy: Enemy) => {
+    console.log('Selecting enemy for taunts:', enemy.name);
+    setSelectedTauntEnemy(enemy);
+    // Load initial progressive taunt (arrogant phase)
+    const initialTaunt = await getProgressiveTaunt(enemy, 0, 0);
+    setCurrentLiveTaunt(initialTaunt);
+  };
+
+  // Get progressive taunts mixing AI and fear-based progression
+  const getProgressiveTaunt = async (enemy: Enemy, fearLevel: number, deathCount: number) => {
+    // 80% chance for AI taunt (brutal personal attacks), 20% chance for fear progression taunt
+    const useAITaunt = Math.random() < 0.8;
+
+    if (useAITaunt) {
+      try {
+        // Get AI taunt but modify based on fear level
+        let aiTaunt = await BattleTauntManager.getPreBattleTaunt(enemy);
+
+        // Add fear-based modifications to AI taunts
+        if (fearLevel >= 75) {
+          // Broken phase - enemy is confused and desperate
+          aiTaunt = aiTaunt + ` ...wait, I've said this before... Death #${deathCount}... Why do I keep dying?!`;
+        } else if (fearLevel >= 50) {
+          // Fearful phase - enemy shows panic
+          aiTaunt = aiTaunt + ` But... but I've died ${deathCount} times to you already! This isn't right!`;
+        } else if (fearLevel >= 25) {
+          // Worried phase - enemy shows doubt
+          aiTaunt = aiTaunt + ` ...though you're getting stronger each time. How?`;
+        }
+        // Arrogant phase keeps AI taunt pure
+
+        return aiTaunt;
+      } catch (error) {
+        // Fallback to progression taunts if AI fails
+        return getStaticProgressiveTaunt(enemy, fearLevel, deathCount);
+      }
+    } else {
+      return getStaticProgressiveTaunt(enemy, fearLevel, deathCount);
     }
   };
 
-  const handleSkipTaunt = () => {
-    if (pendingEnemy) {
-      setCurrentEnemy(pendingEnemy);
-      setShowPreBattleTaunt(false);
-      setShowBattle(true);
-      setPendingEnemy(null);
+  // Personality-specific progression taunts
+  const getStaticProgressiveTaunt = (enemy: Enemy, fearLevel: number, deathCount: number) => {
+    const personality = enemy.personality;
+
+    // Define personality-specific taunts for each fear level
+    const personalityTaunts = {
+      // SCHOOL KIDS - cruel, vicious mockery of failures
+      'immature_mockers': {
+        arrogant: ["HAHA! Look at this pathetic loser trying AGAIN!", "Remember when you wet yourself in 3rd grade? We ALL remember!", "You're STILL the same worthless failure we laughed at!", "Nobody likes you! Nobody EVER liked you!"],
+        worried: ["Why... why aren't you crying yet?", "You're supposed to break down like always!", "This isn't how this works! You always give up!"],
+        fearful: [`Stop! You've humiliated us ${deathCount} times! We're the bullies here!`, "You can't turn this around! WE decide who's worthless!", "I don't wanna be the loser! That's YOUR job!"],
+        broken: [`Death ${deathCount + 1}... who's the real failure here?`, "Were we... were we always just your own self-hate?", "I can't remember why we thought we were better than you..."]
+      },
+
+      // PARENTS GOSSIP - cruel comparisons and shame
+      'judgmental_whispers': {
+        arrogant: ["*whispers* Look how pathetic they are compared to Sarah's daughter.", "*tsk tsk* At their age, we had already achieved so much more.", "Such an embarrassment to the family bloodline.", "*whispers* Their siblings are so much more successful."],
+        worried: ["*confused whispers* Wait... they're actually not failing this time?", "*nervous* This doesn't fit our narrative about them...", "*worried* What if people stop agreeing with our criticism?"],
+        fearful: [`*panicked whispers* They've shamed us ${deathCount} times! We look like fools!`, "*terrified* Everyone will know we were wrong about our own child!", "*desperate* Quick! Find new ways to criticize them!"],
+        broken: [`*broken whispers* Death ${deathCount + 1}... were we horrible parents?`, "Did we... did we destroy our own child's confidence?", "*sobbing whispers* We turned love into comparison..."]
+      },
+
+      // TRASH FRIENDS - manipulative betrayal and sabotage
+      'fake_loyalty_draggers': {
+        arrogant: ["Real friends don't abandon each other for some stupid goals.", "You think you're better than us now? Fuck that.", "Remember all the times we were there for you? This is how you repay us?", "You're gonna fail anyway, might as well waste time with us."],
+        worried: ["Yo... you're actually not listening to us anymore?", "This is fucked up, you're supposed to need us...", "You're becoming someone we can't control..."],
+        fearful: [`Bro! You've abandoned us ${deathCount} times! We're supposed to matter!`, "Stop growing without us! We're your REAL friends!", "Come back! We'll sabotage everything you've built!"],
+        broken: [`Death ${deathCount + 1}... we were never real friends, were we?`, "We just... we just wanted to keep you as miserable as us...", "Were we ever there for you... or just there to hold you back?"]
+      },
+
+      // GIRLS IN CLASS - complete social invisibility and dismissal
+      'sarcastic_ice_queens': {
+        arrogant: ["Who? Oh right... you exist. Anyway...", "Literally nobody cares about what you do.", "You're like... not even on our radar. At all.", "Wait, what's your name again? Actually, don't tell me."],
+        worried: ["Huh... people are starting to notice you? Weird.", "This is actually confusing... you're supposed to be nobody...", "Since when do invisible people become visible?"],
+        fearful: [`What?! You've made yourself known ${deathCount} times! How?!`, "You can't just become somebody! You're supposed to stay nobody!", "Stop existing in our space! Go back to being invisible!"],
+        broken: [`Death ${deathCount + 1}... did we even know you existed before this?`, "Were we... were we just ignoring someone who mattered?", "I... I can't remember ever seeing you as a real person..."]
+      },
+
+      // ORCS - crude, brutish, simple
+      'crude_brutality': {
+        arrogant: ["GRAAAH! Crush puny human!", "Orc smash weakling!", "You no match for orc strength!", "Puny human give up now!"],
+        worried: ["Grrr... human getting stronger... not good...", "This not how it supposed to go...", "Orc confused... human no quit..."],
+        fearful: [`NOOO! Human kill orc ${deathCount} times! Orc scared!`, "Orc no want die again! Human too strong!", "Why orc keep coming back to die?!"],
+        broken: [`Death ${deathCount + 1}... orc... orc forgot how to count...`, "Orc... orc not real orc... just angry thought...", "Human... human is god of orc world..."]
+      },
+
+      // CHAOTIC PRANKSTERS - silly, annoying
+      'chaotic_pranksters': {
+        arrogant: ["Hehe! Time for chaos!", "We'll mess with your focus! WHEEE!", "Distraction time! Party!", "Ooh! Shiny things everywhere!"],
+        worried: ["Huh? Our chaos isn't working?", "Why aren't you getting distracted?", "This is... actually kinda boring now..."],
+        fearful: [`AHHH! You've defeated chaos ${deathCount} times!`, "We just wanted to have fun! Why do we keep dying?!", "Chaos is supposed to win! This isn't fun anymore!"],
+        broken: [`Death ${deathCount + 1}... is chaos even real?`, "We've forgotten how to be chaotic...", "Are we just... random thoughts that got organized?"]
+      },
+
+      // ACADEMIC DESTROYER - crushing teacher who destroys dreams
+      'academic_destroyer': {
+        arrogant: ["You're not college material. Accept your limitations.", "I've failed better students than you for less.", "Your parents wasted their money on your education.", "You'll never amount to anything intellectually significant."],
+        worried: ["This... this can't be right. You're improving beyond expectations...", "My assessment methods have never been wrong before...", "Students like you don't suddenly become capable..."],
+        fearful: [`You've proven my grading wrong ${deathCount} times! This is impossible!`, "I'm supposed to crush dreams, not watch them come true!", "My authority! My expertise! You're destroying everything I believe!"],
+        broken: [`Death ${deathCount + 1}... how many dreams did I crush unnecessarily?`, "Was I... was I just a failed academic taking it out on students?", "Did I destroy potential instead of nurturing it?"]
+      },
+
+      // ARROGANT INCOMPETENTS - corporate/authority figures
+      'arrogant_incompetents': {
+        arrogant: ["You clearly don't understand how things work around here.", "I've been doing this longer than you've been alive.", "That's not how we do business.", "Let me explain reality to you..."],
+        worried: ["Well... that's... that's not supposed to work...", "This isn't following proper procedure...", "I... I might need to reconsider my methods..."],
+        fearful: [`You've made me look incompetent ${deathCount} times!`, "This is impossible! I'm the expert here!", "You're supposed to respect my authority!"],
+        broken: [`Death ${deathCount + 1}... was I ever really competent?`, "Authority... what does that even mean anymore?", "I've forgotten what I was supposed to be expert at..."]
+      },
+
+      // SNARKY COWARDS - internet trolls/critics
+      'snarky_cowards': {
+        arrogant: ["LOL nice try, but you'll give up like everyone else.", "Imagine thinking you're special 😂", "This is cringe, just stop.", "You're trying way too hard."],
+        worried: ["Wait... you're actually... still going?", "This is getting less funny...", "Okay but you'll probably quit tomorrow..."],
+        fearful: [`Dude you've dunked on me ${deathCount} times! Not cool!`, "Stop proving me wrong! I just wanted to make jokes!", "This isn't fair! You're supposed to quit!"],
+        broken: [`Death ${deathCount + 1}... I can't even come up with snark anymore...`, "Was I ever funny... or just mean?", "I... I don't remember how to troll anymore..."]
+      },
+
+      // PHYSICAL INTIMIDATOR - violent bully who thrashes you
+      'physical_intimidator': {
+        arrogant: ["I'm gonna beat the shit out of you, weakling.", "You're pathetic. I could snap you like a twig.", "Your scrawny ass has never won a fight in your life.", "I'll make you cry like the little bitch you are."],
+        worried: ["Why... why aren't you backing down anymore?", "You used to be so easy to intimidate...", "This mental strength shit is confusing me..."],
+        fearful: [`You've beaten me ${deathCount} times! That's impossible!`, "I'm the one who's supposed to dominate! Not you!", "Stop! I can't handle being the weak one!"],
+        broken: [`Death ${deathCount + 1}... was I always just compensating for being weak inside?`, "I... I bullied others because I hated myself...", "Real strength... it was never about muscles, was it?"]
+      },
+
+      // DISMISSIVE CRUSHER - vicious dream destroyer
+      'dismissive_crusher': {
+        arrogant: ["Your dreams are laughably unrealistic. Give up now.", "People like you are born to be mediocre. Accept it.", "I've seen a thousand failures like you. You're nothing special.", "Your ambitions are embarrassing. Stop humiliating yourself."],
+        worried: ["This... this actually seems to be working somehow...", "Maybe I was wrong to be so harsh... no, impossible...", "Your success is making me question everything I believe..."],
+        fearful: [`You've shattered my worldview ${deathCount} times!`, "I was supposed to save you from disappointment! Why are you succeeding?!", "Stop proving that dreams can come true! It ruins everything!"],
+        broken: [`Death ${deathCount + 1}... how many dreams did I kill out of my own fear?`, "I... I destroyed hope because I had given up on my own...", "Was I crushing dreams... or was I just jealous of dreamers?"]
+      },
+
+      // CACKLING OPPORTUNISTS - opportunistic, profit-driven
+      'cackling_opportunists': {
+        arrogant: ["Heh! Another easy target!", "Time to profit from your failure!", "This'll be fun!", "Easy money! You're so predictable!"],
+        worried: ["Wait... this isn't going as planned...", "Uh oh... maybe we bit off more than we can chew...", "This is getting complicated..."],
+        fearful: [`You've turned the tables ${deathCount} times! This isn't profitable anymore!`, "We can't keep losing like this!", "The opportunity is slipping away!"],
+        broken: [`Death ${deathCount + 1}... the opportunity was never real...`, "We just wanted easy victories... but nothing's easy...", "Maybe we're the ones being exploited..."]
+      },
+
+      // THEATRICAL FAILURES - dramatic, over-the-top villains
+      'theatrical_failures': {
+        arrogant: ["Behold! Your doom approaches!", "I am inevitable! Your failure is written in the stars!", "Witness my power! You cannot defeat me!", "This is my moment of triumph!"],
+        worried: ["This... this wasn't in the script...", "My grand plan is falling apart...", "But I was supposed to be the villain here!"],
+        fearful: [`Act ${deathCount}: The hero rises again! This can't be happening!`, "My dramatic monologue means nothing now!", "The audience has turned against me!"],
+        broken: [`Final curtain call #${deathCount + 1}... was I ever the real villain?`, "My whole performance was just... empty theater...", "I was so busy playing the part, I forgot who I really was..."]
+      },
+
+      // SILENT JUDGES - quiet, judgmental observers
+      'silent_judges': {
+        arrogant: ["*silent stare of disapproval*", "*shakes head in disappointment*", "*whispers to others about your failures*", "*judges you quietly from the corner*"],
+        worried: ["*confused glances*", "*uncertain whispers*", "*nervous fidgeting while watching*", "*unsure looks exchanged*"],
+        fearful: [`*${deathCount} deaths later, still judging in terror*`, "*backing away while still staring*", "*whispering fearfully to others*", "*judging from a safe distance*"],
+        broken: [`*Death ${deathCount + 1}... were we just afraid to try ourselves?*`, "*silent tears of realization*", "*no more words, just broken stares*", "*the judgment was always about our own fears*"]
+      },
+
+      // CONFIDENT BLAMERS - aggressive blame-shifters
+      'confident_blamers': {
+        arrogant: ["It's YOUR fault, not mine!", "You always mess everything up!", "If you were better, this wouldn't happen!", "Don't blame me for your failures!"],
+        worried: ["Wait... maybe it wasn't entirely your fault?", "I'm starting to doubt my accusations...", "Could I have been wrong about who's to blame?"],
+        fearful: [`${deathCount} defeats... am I the problem here?`, "My blame isn't working anymore!", "What if I'm the one who needs to change?"],
+        broken: [`Death ${deathCount + 1}... I was blaming you for my own inadequacy...`, "All my finger-pointing was just... projection...", "I blamed others because I couldn't face my own faults..."]
+      }
+    };
+
+    // Get the appropriate taunts for this personality
+    const taunts = personalityTaunts[personality] || personalityTaunts['immature_mockers']; // fallback
+
+    if (fearLevel < 25) {
+      return taunts.arrogant[Math.floor(Math.random() * taunts.arrogant.length)];
+    } else if (fearLevel < 50) {
+      return taunts.worried[Math.floor(Math.random() * taunts.worried.length)];
+    } else if (fearLevel < 75) {
+      return taunts.fearful[Math.floor(Math.random() * taunts.fearful.length)];
+    } else {
+      return taunts.broken[Math.floor(Math.random() * taunts.broken.length)];
     }
+  };
+
+  // Live taunt cycling effect with progression
+  useEffect(() => {
+    if (selectedTauntEnemy) {
+      const interval = setInterval(async () => {
+        const progressiveTaunt = await getProgressiveTaunt(
+          selectedTauntEnemy,
+          battleProgression.enemyFearLevel,
+          battleProgression.enemyDeathCount
+        );
+        setCurrentLiveTaunt(progressiveTaunt);
+      }, 8000); // Faster taunt cycling during progression
+
+      return () => clearInterval(interval);
+    } else {
+      setCurrentLiveTaunt('');
+    }
+  }, [selectedTauntEnemy, battleProgression]);
+
+  // Progressive battle system
+  const startProgressiveBattle = () => {
+    if (!selectedTauntEnemy || !running) return;
+
+    const battleInterval = setInterval(() => {
+      if (!running || !selectedTauntEnemy) {
+        clearInterval(battleInterval);
+        return;
+      }
+
+      executeSingleBattle();
+    }, 12000); // Battle every 12 seconds
+
+    // Store interval to clear on pause/reset
+    intervalRef.current = battleInterval;
+  };
+
+  const executeSingleBattle = () => {
+    if (!selectedTauntEnemy) return;
+
+    setBattleProgression(prev => {
+      const newBattleNumber = prev.battleNumber + 1;
+      const timeInSession = (pomodoroMinutes * 60) - (minutes * 60 + seconds);
+      const progressionPercent = Math.min(timeInSession / (pomodoroMinutes * 60), 1);
+
+      // Player gets stronger throughout pomodoro (starts weak, ends very strong)
+      const newStrengthMultiplier = 0.3 + (progressionPercent * 2.0); // 0.3x to 2.3x strength
+
+      // Enemy gets weaker and more afraid
+      const newFearLevel = Math.min(progressionPercent * 100, 100);
+
+      // Calculate battle outcome based on progression
+      const playerPower = newStrengthMultiplier * 100;
+      const enemyPower = Math.max(20, 120 - (newFearLevel * 0.8)); // Enemy weakens as fear increases
+
+      let newDeathCount = prev.enemyDeathCount;
+      let battleResult = '';
+
+      if (playerPower > enemyPower) {
+        // Player wins
+        newDeathCount++;
+        battleResult = `⚡ VICTORY #${newDeathCount}! You obliterate ${selectedTauntEnemy.name}!`;
+      } else {
+        // Enemy wins (early in session)
+        battleResult = `💀 ${selectedTauntEnemy.name} crushes you... but you grow stronger.`;
+      }
+
+      // Update live taunt with battle result
+      setCurrentLiveTaunt(battleResult);
+
+      // Check if enemy is now trapped (after 5+ deaths)
+      const isTrapped = newDeathCount >= 5;
+
+      return {
+        ...prev,
+        battleNumber: newBattleNumber,
+        enemyDeathCount: newDeathCount,
+        playerStrengthMultiplier: newStrengthMultiplier,
+        enemyFearLevel: newFearLevel,
+        isEnemyTrapped: isTrapped
+      };
+    });
   };
 
   const handleBattleVictory = (expGained: number, statsGained: any) => {
+    const playerLevel = Math.floor(heroData.exp / 200) + 1; // Match the new harder leveling
+    const enemyLevel = Math.floor(currentEnemy!.hp / 15); // Match enemy scaling
+    const isGrindingMode = false; // All battles are now "grinding" since enemies stay available
+    const canWin = playerLevel >= enemyLevel - 1; // Stricter win condition
+
+    // Much more grindy exp and stat gains
+    let adjustedExpGained = Math.floor(expGained * 0.3); // 70% less exp
+    let adjustedStatsGained = { ...statsGained };
+
+    // Further reduce stat gains
+    Object.keys(adjustedStatsGained).forEach(stat => {
+      adjustedStatsGained[stat] = Math.floor(adjustedStatsGained[stat] * 0.4); // 60% less stats
+    });
+
+    if (!canWin) {
+      // Tiny rewards for losing to higher level enemies to encourage grinding
+      adjustedExpGained = Math.floor(adjustedExpGained * 0.1);
+      Object.keys(adjustedStatsGained).forEach(stat => {
+        adjustedStatsGained[stat] = Math.floor(adjustedStatsGained[stat] * 0.1);
+      });
+    }
+
     const newHeroData = {
       ...heroData,
-      exp: heroData.exp + expGained,
-      defeatedEnemies: [...heroData.defeatedEnemies, currentEnemy!.id]
+      exp: heroData.exp + adjustedExpGained,
+      // Track kill count instead of defeated status
+      enemyKillCounts: {
+        ...(heroData.enemyKillCounts || {}),
+        [currentEnemy!.id]: ((heroData.enemyKillCounts || {})[currentEnemy!.id] || 0) + 1
+      }
     };
 
     // Add stat gains
-    Object.entries(statsGained).forEach(([stat, value]) => {
+    Object.entries(adjustedStatsGained).forEach(([stat, value]) => {
       const statKey = stat as keyof typeof newHeroData.stats;
       newHeroData.stats[statKey] += value as number;
     });
@@ -302,7 +600,8 @@ export default function DemonCrusherRPG() {
     newHeroData.currentAct = getCurrentAct(newHeroData);
 
     console.log('🏆 VICTORY! Enemy defeated:', currentEnemy?.name);
-    console.log('💪 Stats gained:', statsGained);
+    console.log('🔄 Grinding mode:', isGrindingMode);
+    console.log('💪 Stats gained:', adjustedStatsGained);
     console.log('📊 Updated stats:', newHeroData.stats);
 
     setHeroData(newHeroData);
@@ -316,15 +615,13 @@ export default function DemonCrusherRPG() {
         newHeroData.stats,
         newHeroData.totalPomodoros
       );
-      const available = unlocked.filter(enemy =>
-        !newHeroData.defeatedEnemies.includes(enemy.id)
-      );
+      const available = ALL_ENEMIES; // Keep ALL enemies available for maximum taunts
 
       setUnlockedEnemies(unlocked);
       setAvailableEnemies(available);
 
       console.log('🔄 Force updated enemies after victory:', {
-        defeated: newHeroData.defeatedEnemies.length,
+        defeated: Object.keys(newHeroData.enemyKillCounts || {}).length,
         available: available.length,
         nextEnemies: available.slice(0, 3).map(e => e.name)
       });
@@ -334,9 +631,6 @@ export default function DemonCrusherRPG() {
     setMinutes(breakMinutes);
     setSeconds(0);
     setOnBreak(true);
-
-    // Show ambient taunts again after battle
-    setTimeout(() => setShowAmbientTaunts(true), 2000);
   };
 
   const handleBattleDefeat = () => {
@@ -354,9 +648,6 @@ export default function DemonCrusherRPG() {
     setMinutes(breakMinutes);
     setSeconds(0);
     setOnBreak(true);
-
-    // Show ambient taunts again after defeat
-    setTimeout(() => setShowAmbientTaunts(true), 2000);
   };
 
   const handleBattleFlee = () => {
@@ -367,24 +658,54 @@ export default function DemonCrusherRPG() {
     setMinutes(breakMinutes);
     setSeconds(0);
     setOnBreak(true);
-
-    // Show ambient taunts again after fleeing
-    setTimeout(() => setShowAmbientTaunts(true), 1000);
   };
 
   // Timer control functions
   const handleStart = () => {
     setRunning(true);
+
+    // Reset battle progression when starting new pomodoro
+    if (selectedTauntEnemy) {
+      setBattleProgression({
+        enemyDeathCount: 0,
+        playerStrengthMultiplier: 1.0,
+        enemyFearLevel: 0,
+        battleNumber: 0,
+        isEnemyTrapped: false
+      });
+
+      // Start the progressive battle loop
+      startProgressiveBattle();
+    }
   };
 
   const handlePause = () => {
     setRunning(false);
+    // Clear battle interval when pausing
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
   };
 
   const handleReset = () => {
     setRunning(false);
     setMinutes(onBreak ? breakMinutes : pomodoroMinutes);
     setSeconds(0);
+
+    // Clear battle interval and reset progression
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+
+    setBattleProgression({
+      enemyDeathCount: 0,
+      playerStrengthMultiplier: 1.0,
+      enemyFearLevel: 0,
+      battleNumber: 0,
+      isEnemyTrapped: false
+    });
   };
 
   const handleStartBreak = () => {
@@ -394,13 +715,6 @@ export default function DemonCrusherRPG() {
     setRunning(true);
   };
 
-  // Manual enemy battle trigger
-  const startBattleWithEnemy = (enemyId: string) => {
-    const enemy = getEnemyById(enemyId);
-    if (enemy && !heroData.defeatedEnemies.includes(enemyId)) {
-      triggerBattle(enemy);
-    }
-  };
 
   // Handle task completion for stat allocation
   const loadActiveTodos = async () => {
@@ -527,21 +841,7 @@ export default function DemonCrusherRPG() {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor="#000" />
 
-      {/* Ambient Taunts - Show when not in battle and enemies available */}
-      <AmbientTauntDisplay
-        availableEnemies={availableEnemies}
-        visible={showAmbientTaunts && !running && !showBattle && !showPreBattleTaunt}
-      />
 
-      {/* Pre-Battle Taunt Screen */}
-      {pendingEnemy && (
-        <PreBattleTauntScreen
-          visible={showPreBattleTaunt}
-          enemy={pendingEnemy}
-          onStartBattle={handleStartBattle}
-          onSkip={handleSkipTaunt}
-        />
-      )}
 
       {/* Battle Modal */}
       <Modal visible={showBattle} animationType="fade" presentationStyle="fullScreen">
@@ -552,6 +852,8 @@ export default function DemonCrusherRPG() {
             onVictory={handleBattleVictory}
             onDefeat={handleBattleDefeat}
             onFlee={handleBattleFlee}
+            isGrindingMode={false}
+            canWin={Math.floor(heroData.exp / 100) + 1 >= Math.floor(currentEnemy.hp / 20) - 2}
           />
         )}
       </Modal>
@@ -655,7 +957,7 @@ export default function DemonCrusherRPG() {
                 Streak: {heroData.streakDays} days | Total: {heroData.totalPomodoros} sessions
               </Text>
               <Text style={styles.progressText}>
-                EXP: {heroData.exp} | Defeated: {heroData.defeatedEnemies.length} enemies
+                EXP: {heroData.exp} | Total Kills: {Object.values(heroData.enemyKillCounts || {}).reduce((sum, kills) => sum + kills, 0)}
               </Text>
             </View>
 
@@ -699,20 +1001,55 @@ export default function DemonCrusherRPG() {
               )}
             </View>
 
-            {/* Available Enemies */}
-            {availableEnemies.length > 0 && (
-              <View style={styles.enemiesCard}>
-                <Text style={styles.cardTitle}>AVAILABLE BATTLES</Text>
-                {availableEnemies.slice(0, 3).map(enemy => (
+
+            {/* Live Taunt Box */}
+            {selectedTauntEnemy && currentLiveTaunt && (
+              <View style={[
+                styles.liveTauntBox,
+                {
+                  borderColor: battleProgression.enemyFearLevel < 25 ? "#FF4444" :
+                              battleProgression.enemyFearLevel < 50 ? "#FF8800" :
+                              battleProgression.enemyFearLevel < 75 ? "#FFAA00" : "#00FF00"
+                }
+              ]}>
+                <View style={[
+                  styles.tauntEnemyHeader,
+                  {
+                    backgroundColor: battleProgression.enemyFearLevel < 25 ? "#FF4444" :
+                                   battleProgression.enemyFearLevel < 50 ? "#FF8800" :
+                                   battleProgression.enemyFearLevel < 75 ? "#FFAA00" : "#00FF00"
+                  }
+                ]}>
+                  <Text style={styles.tauntEnemyIcon}>
+                    {selectedTauntEnemy.tier === 'small_fry' ? '👿' :
+                     selectedTauntEnemy.tier === 'personal_tormentor' ? '😈' :
+                     selectedTauntEnemy.tier === 'psychological_destroyer' ? '👹' :
+                     selectedTauntEnemy.tier === 'inner_demon' ? '💀' :
+                     selectedTauntEnemy.tier === 'ultimate_boss' ? '🔥' : '👹'}
+                  </Text>
+                  <View style={styles.tauntEnemyInfo}>
+                    <Text style={styles.tauntEnemyName}>
+                      {selectedTauntEnemy.name}
+                      {battleProgression.isEnemyTrapped && " 🔒"}
+                    </Text>
+                    <Text style={styles.tauntEnemyLevel}>
+                      Level {Math.floor(selectedTauntEnemy.hp / 15)} • Deaths: {battleProgression.enemyDeathCount}
+                    </Text>
+                    <Text style={styles.battleProgressText}>
+                      Fear: {Math.round(battleProgression.enemyFearLevel)}% •
+                      Your Power: {Math.round(battleProgression.playerStrengthMultiplier * 100)}%
+                    </Text>
+                  </View>
                   <TouchableOpacity
-                    key={enemy.id}
-                    style={styles.enemyItem}
-                    onPress={() => startBattleWithEnemy(enemy.id)}
+                    style={styles.dismissTauntBtn}
+                    onPress={() => setSelectedTauntEnemy(null)}
                   >
-                    <Text style={styles.enemyName}>{enemy.name}</Text>
-                    <Text style={styles.enemyHp}>HP: {enemy.hp}</Text>
+                    <Text style={styles.dismissTauntText}>✕</Text>
                   </TouchableOpacity>
-                ))}
+                </View>
+                <View style={styles.liveTauntBubble}>
+                  <Text style={styles.liveTauntText}>"{currentLiveTaunt}"</Text>
+                </View>
               </View>
             )}
 
@@ -808,16 +1145,16 @@ export default function DemonCrusherRPG() {
               </View>
             </View>
 
-            {/* Defeated Enemies */}
+            {/* Enemy Kill Counts */}
             <View style={styles.defeatedCard}>
-              <Text style={styles.cardTitle}>CONQUERED ENEMIES ({heroData.defeatedEnemies.length})</Text>
-              {heroData.defeatedEnemies.length === 0 ? (
-                <Text style={styles.noEnemiesText}>No enemies defeated yet. Start your first pomodoro!</Text>
+              <Text style={styles.cardTitle}>DEMON KILL COUNTS ({Object.keys(heroData.enemyKillCounts || {}).length} types slain)</Text>
+              {Object.keys(heroData.enemyKillCounts || {}).length === 0 ? (
+                <Text style={styles.noEnemiesText}>No demons killed yet. Select an enemy and start a pomodoro!</Text>
               ) : (
-                heroData.defeatedEnemies.slice(-5).map(enemyId => {
+                Object.entries(heroData.enemyKillCounts || {}).slice(-5).map(([enemyId, killCount]) => {
                   const enemy = getEnemyById(enemyId);
                   return enemy ? (
-                    <Text key={enemyId} style={styles.defeatedEnemy}>✅ {enemy.name}</Text>
+                    <Text key={enemyId} style={styles.defeatedEnemy}>💀 {enemy.name}: {killCount} kills</Text>
                   ) : null;
                 })
               )}
@@ -838,7 +1175,7 @@ export default function DemonCrusherRPG() {
             <View style={styles.allEnemiesCard}>
               <Text style={styles.cardTitle}>ALL ENEMIES ({ALL_ENEMIES.length})</Text>
               {ALL_ENEMIES.map(enemy => {
-                const isDefeated = heroData.defeatedEnemies.includes(enemy.id);
+                const killCount = (heroData.enemyKillCounts || {})[enemy.id] || 0;
                 const isUnlocked = getUnlockedEnemies(heroData.streakDays, heroData.stats, heroData.totalPomodoros).some(e => e.id === enemy.id);
                 const isAvailable = availableEnemies.some(e => e.id === enemy.id);
 
@@ -846,7 +1183,7 @@ export default function DemonCrusherRPG() {
                 let statusText = 'LOCKED';
                 let statusColor = '#666';
 
-                if (isDefeated) {
+                if (killCount > 0) {
                   statusIcon = '✅';
                   statusText = 'DEFEATED';
                   statusColor = '#44FF44';
@@ -963,28 +1300,30 @@ export default function DemonCrusherRPG() {
 
             {/* Enemy Selection for Grinding */}
             <View style={styles.grindingCard}>
-              <Text style={styles.cardTitle}>🔥 GRINDING TARGETS</Text>
-              <Text style={styles.grindingHint}>Fight weaker enemies to farm EXP, or challenge stronger ones for taunts!</Text>
+              <Text style={styles.cardTitle}>🔥 ALL DEMON TARGETS</Text>
+              <Text style={styles.grindingHint}>Fight any demon repeatedly! Get EXP from weaker ones, taunts from stronger ones!</Text>
 
-              {availableEnemies.slice(0, 3).map(enemy => {
-                const playerLevel = Math.floor(heroData.exp / 100) + 1;
-                const enemyLevel = Math.floor(enemy.hp / 20); // Rough enemy level calculation
-                const canWin = playerLevel >= enemyLevel - 2; // Can beat enemies up to 2 levels higher
+              {availableEnemies.map(enemy => {
+                const playerLevel = Math.floor(heroData.exp / 200) + 1;
+                const enemyLevel = Math.floor(enemy.hp / 15);
+                const canWin = playerLevel >= enemyLevel - 1;
 
                 return (
                   <TouchableOpacity
                     key={enemy.id}
                     style={[styles.grindEnemyItem, canWin ? styles.winnable : styles.challenging]}
-                    onPress={() => triggerBattle(enemy)}
+                    onPress={() => selectEnemyForTaunts(enemy)}
                   >
                     <View style={styles.grindEnemyInfo}>
-                      <Text style={styles.grindEnemyName}>{enemy.name}</Text>
+                      <Text style={styles.grindEnemyName}>
+                        ⚔️ {enemy.name}
+                      </Text>
                       <Text style={styles.grindEnemyLevel}>
                         Level {enemyLevel} | {canWin ? '💰 EXP Gain' : '💀 Taunt Only'}
                       </Text>
                     </View>
                     <Text style={styles.grindAction}>
-                      {canWin ? '⚔️ FIGHT' : '👂 LISTEN'}
+                      📢 SELECT FOR TAUNTS
                     </Text>
                   </TouchableOpacity>
                 );
@@ -1001,7 +1340,7 @@ export default function DemonCrusherRPG() {
                 Total: {heroData.totalPomodoros} battles
               </Text>
               <Text style={styles.sessionText}>
-                Demons Defeated: {heroData.defeatedEnemies.length}
+                Total Demon Kills: {Object.values(heroData.enemyKillCounts || {}).reduce((sum, kills) => sum + kills, 0)}
               </Text>
               <Text style={styles.sessionText}>
                 Current Streak: {heroData.streakDays} days
@@ -1138,6 +1477,68 @@ const styles = StyleSheet.create({
     fontFamily: "monospace",
     marginBottom: 25,
   },
+
+  // Live Taunt Box
+  liveTauntBox: {
+    backgroundColor: "#1a1a1a",
+    borderRadius: 15,
+    borderWidth: 2,
+    borderColor: "#FF4444",
+    marginBottom: 15,
+    overflow: "hidden",
+  },
+  tauntEnemyHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FF4444",
+    padding: 12,
+  },
+  tauntEnemyIcon: {
+    fontSize: 24,
+    marginRight: 10,
+  },
+  tauntEnemyInfo: {
+    flex: 1,
+  },
+  tauntEnemyName: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "bold",
+    fontFamily: "monospace",
+  },
+  tauntEnemyLevel: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontFamily: "monospace",
+    opacity: 0.9,
+  },
+  battleProgressText: {
+    color: "#FFD700",
+    fontSize: 9,
+    fontFamily: "monospace",
+    opacity: 0.8,
+  },
+  dismissTauntBtn: {
+    padding: 8,
+  },
+  dismissTauntText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  liveTauntBubble: {
+    padding: 15,
+    backgroundColor: "#2a2a2a",
+  },
+  liveTauntText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontFamily: "monospace",
+    fontStyle: "italic",
+    textAlign: "center",
+    lineHeight: 20,
+  },
+
   mainTimerControls: {
     flexDirection: "row",
     gap: 15,
@@ -1245,21 +1646,8 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
 
-  // Enemies
-  enemyItem: {
-    backgroundColor: "#222222",
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 8,
-    borderLeftWidth: 3,
-    borderLeftColor: "#FF0000",
-  },
-  enemyName: {
-    color: "#FF0000",
-    fontSize: 16,
-    fontWeight: "bold",
-    fontFamily: "monospace",
-  },
+  // Enemies (styles moved to avoid duplicates)
+  // enemyName moved to avoid duplicates
   enemyHp: {
     color: "#CCCCCC",
     fontSize: 12,
@@ -1457,102 +1845,12 @@ const styles = StyleSheet.create({
     fontFamily: "monospace",
   },
 
-  // Timer View
-  timerSettingsCard: {
-    backgroundColor: "#111111",
-    borderWidth: 1,
-    borderColor: "#39FF14",
-    borderRadius: 8,
-    padding: 15,
-    marginBottom: 15,
-  },
-  inputRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  label: {
-    color: "#39FF14",
-    fontSize: 14,
-    marginHorizontal: 8,
-    fontFamily: "monospace",
-  },
-  input: {
-    backgroundColor: "#222222",
-    color: "#39FF14",
-    borderWidth: 1,
-    borderColor: "#39FF14",
-    borderRadius: 6,
-    width: 50,
-    height: 35,
-    textAlign: "center",
-    marginHorizontal: 8,
-    fontSize: 16,
-    fontFamily: "monospace",
-  },
+  // Timer View (styles moved to avoid duplicates)
 
-  // Big Timer
-  bigTimerCard: {
-    backgroundColor: "#0A0A0A",
-    borderWidth: 3,
-    borderColor: "#39FF14",
-    borderRadius: 15,
-    padding: 20,
-    marginBottom: 15,
-    alignItems: "center",
-  },
-  bigClock: {
-    fontSize: 60,
-    color: "#39FF14",
-    fontWeight: "bold",
-    fontFamily: "monospace",
-    textShadowColor: "#39FF14",
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 10,
-  },
-  timerMode: {
-    color: "#FF6600",
-    fontSize: 18,
-    fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 20,
-    fontFamily: "monospace",
-  },
-  timerButtonsRow: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    width: "100%",
-    marginBottom: 15,
-  },
-  timerActionBtn: {
-    backgroundColor: "#003300",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: "#39FF14",
-    minWidth: 80,
-    alignItems: "center",
-  },
-  timerActionBtnText: {
-    color: "#39FF14",
-    fontSize: 14,
-    fontWeight: "bold",
-    fontFamily: "monospace",
-  },
-  breakBtn: {
-    backgroundColor: "#330000",
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#666666",
-  },
-  breakBtnText: {
-    color: "#666666",
-    fontSize: 12,
-    fontFamily: "monospace",
-  },
+  // Big Timer (styles moved to avoid duplicates)
+  // timerButtonsRow moved to avoid duplicates
+  // timerActionBtn and timerActionBtnText moved to avoid duplicates
+  // breakBtn and breakBtnText moved to avoid duplicates
 
   // Session Info
   sessionInfoCard: {
@@ -1963,5 +2261,9 @@ const styles = StyleSheet.create({
     fontFamily: "monospace",
     textAlign: "center",
     marginBottom: 15,
+  },
+  grindActions: {
+    alignItems: "flex-end",
+    gap: 5,
   },
 });

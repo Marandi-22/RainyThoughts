@@ -34,7 +34,7 @@ interface PersonalData {
 }
 
 class PsychologicalWarfareService {
-  private static readonly API_KEY = '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';
+  private static readonly API_KEY = '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';
   private static readonly API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
   /**
@@ -83,42 +83,49 @@ class PsychologicalWarfareService {
   }
 
   /**
-   * Check if enemy dialogues need regeneration - STRICT to save API costs
+   * Check if enemy dialogues need regeneration - MORE AGGRESSIVE FOR BETTER TAUNTS
    */
   static shouldRegenerateDialogues(enemy: Enemy, personalData: PersonalData, heroData: HeroData): boolean {
     const currentDataHash = generateDataHash(heroData.personalData);
 
-    // STRICT API USAGE CONTROL
-    // Only regenerate if:
+    // MORE AGGRESSIVE API USAGE - Generate taunts more often for better experience
+    // Regenerate if:
     // 1. No dialogues exist at all
-    // 2. Significant data change (new journal entries)
-    // 3. Major stat changes (50+ point increase in any stat)
-    // 4. First time facing this specific enemy tier
+    // 2. ANY data change (even minor journal edits)
+    // 3. ANY stat changes (25+ point increase)
+    // 4. Every 5 battles with this enemy
+    // 5. If dialogues are older than 3 days
 
     if (!enemy.dialogues.when_weak.length) {
       return true; // No dialogues exist
     }
 
     if (enemy.lastDataHash !== currentDataHash) {
-      // Check if it's a significant change, not just minor edits
-      const significantChange =
-        heroData.dataTracking.newJournalEntries > 5 || // 5+ new journal entries
-        heroData.dataTracking.goalsUpdated; // Goals changed
+      return true; // ANY journal change triggers regeneration
+    }
 
-      if (significantChange) {
+    // Any meaningful stat progression (25+ total stat increase)
+    const totalStatsNow = Object.values(heroData.stats).reduce((sum, val) => sum + val, 0);
+    const lastTotalStats = enemy.lastTotalStats || 0;
+
+    if (totalStatsNow - lastTotalStats >= 25) { // Lowered from 100 to 25
+      return true;
+    }
+
+    // Regenerate if dialogues are older than 3 days
+    if (enemy.lastGenerated) {
+      const daysSinceGeneration = (Date.now() - new Date(enemy.lastGenerated).getTime()) / (1000 * 60 * 60 * 24);
+      if (daysSinceGeneration > 3) {
         return true;
       }
     }
 
-    // Major stat progression (50+ point jump in any stat since last generation)
-    const totalStatsNow = Object.values(heroData.stats).reduce((sum, val) => sum + val, 0);
-    const lastTotalStats = enemy.lastTotalStats || 0;
-
-    if (totalStatsNow - lastTotalStats >= 100) { // 100+ total stat increase
+    // Random 20% chance to regenerate for variety
+    if (Math.random() < 0.2) {
       return true;
     }
 
-    return false; // Keep existing dialogues to save API costs
+    return false;
   }
 
   /**
@@ -189,6 +196,33 @@ class PsychologicalWarfareService {
   }
 
   /**
+   * Get personality-specific guidelines for AI generation
+   */
+  static getPersonalityGuide(personality: string): string {
+    const guides: { [key: string]: string } = {
+      immature_mockers: "Act like a immature school bully. Reference school failures, homework copying, detention, bad grades. Use childish insults but make them cutting. Mock their academic past.",
+      judgmental_whispers: "Speak in hushed, concerned whispers. Act like a fake-caring gossip who 'worries' about them. Use phrases like '*whispers*', 'we're so concerned', 'such a disappointment'.",
+      fake_loyalty_draggers: "Pretend you care while being manipulative. Use 'sweetie', 'we just want what's best', 'after everything we've done for you'. Guilt trip while appearing caring.",
+      sarcastic_ice_queens: "Be coldly sarcastic and dismissive. Use 'how... amusing', 'predictable', 'delightfully ordinary'. Act bored by their efforts.",
+      crude_brutality: "ALL CAPS. SIMPLE WORDS. CRUSH! WEAK! PATHETIC! Act like a primitive brute who only understands strength.",
+      chaotic_pranksters: "HEHEHE! Be playfully cruel. Talk about 'pranks' and 'fun'. Use excited exclamations and treat their failure as entertainment.",
+      arrogant_incompetents: "Brag about your credentials and education constantly. Act superior despite being incompetent. Reference degrees, qualifications, theoretical knowledge.",
+      academic_destroyer: "Attack their GPA, study habits, academic performance. Reference specific school failures, bad grades, summer school, failed classes.",
+      physical_intimidator: "Focus on weakness vs strength. Reference how they used to run away, looked scared, were a victim. Mock their body language.",
+      wealth_flaunter: "Constantly mention money, expensive items, trust funds, daddy's money. Act like wealth = worth. Mock their financial status.",
+      delay_incarnate: "Speak slowly... with lots of pauses... Always suggest putting things off until later... Never rush anything...",
+      worry_incarnate: "Constantly worry about everything that could go wrong. List terrible possibilities. Ask 'what if?' repeatedly. Spread anxiety.",
+      hopelessness_incarnate: "Everything is meaningless. Nothing matters. All effort is pointless. Crush hope systematically.",
+      inadequacy_amplifier: "You're not good enough. Everyone else is better. You'll never measure up. Constantly compare them unfavorably.",
+      paralysis_inducer: "Too many choices... Can't decide... What if you choose wrong? Better to do nothing... Analysis paralysis...",
+      silent_judges: "Mostly use '...' and '*actions*'. Communicate disappointment through silence. When you do speak, be brief and cutting.",
+      absolute_self_destruction: "ALL CAPS! DESTRUCTION! ANNIHILATION! EVERYTHING MUST END! Embrace mutual destruction as victory!"
+    };
+
+    return guides[personality] || "Be menacing and intimidating while staying in character.";
+  }
+
+  /**
    * Build AI prompt based on enemy type and personal data
    */
   static buildPromptForEnemy(enemy: Enemy, personalData: PersonalData, heroData: HeroData): string {
@@ -203,16 +237,21 @@ class PsychologicalWarfareService {
     }
 
     // Personal tormentors and psychological destroyers
-    return `You are ${enemy.name}, representing a ${enemy.tier} in the user's psychological RPG.
+    return `You are ${enemy.name}, a ${enemy.tier} with the personality of "${enemy.personality}" in the user's psychological RPG.
 
 CONTEXT: This is for a brutal motivational app where harsh honesty fuels productivity through spite and revenge. BE AS CUTTING AND PERSONAL AS POSSIBLE.
 
+CRITICAL: You MUST embody the "${enemy.personality}" personality type completely. Study this personality and make ALL your taunts reflect this specific character type:
+
 Enemy Profile:
 - Name: ${enemy.name}
-- Personality: ${enemy.personality}
+- Personality Type: ${enemy.personality} (THIS IS CRUCIAL - every taunt must reflect this personality!)
 - Your strength (stat you mock them with): ${enemy.strength}
 - What you fear (their strength): ${enemy.weakness}
 - Tier: ${enemy.tier}
+
+PERSONALITY GUIDELINES FOR "${enemy.personality}":
+${this.getPersonalityGuide(enemy.personality)}
 
 User's Personal Data:
 ${personalData.problemsJournal ? `Problems/Insecurities: "${personalData.problemsJournal}"` : ''}

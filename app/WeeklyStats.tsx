@@ -30,6 +30,12 @@ const StatsScreen = () => {
       const completedKeysData = await AsyncStorage.getItem(COMPLETED_TASKS_KEY);
       const completedTaskIds = completedKeysData ? JSON.parse(completedKeysData) : [];
 
+      // Ensure completedTaskIds is always an array
+      if (!Array.isArray(completedTaskIds)) {
+        console.error('completedTaskIds is not an array:', completedTaskIds);
+        return { weeklyData: [], dailyData: [], streakData: {} };
+      }
+
       // Level Calculation
       const totalCompleted = completedTaskIds.length;
       const calculatedLevel = Math.floor(Math.sqrt(totalCompleted / 5));

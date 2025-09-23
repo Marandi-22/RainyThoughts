@@ -3,7 +3,8 @@
     "allow": [
       "Bash(npm ls:*)",
       "Bash(npx expo start:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npm start)"
     ],
     "deny": [],
     "ask": []
