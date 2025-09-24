@@ -34,7 +34,7 @@ interface PersonalData {
 }
 
 class PsychologicalWarfareService {
-  private static readonly API_KEY = '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';
+  private static readonly API_KEY = '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';
   private static readonly API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
   /**
@@ -144,7 +144,7 @@ class PsychologicalWarfareService {
           'X-Title': 'RainyThoughts Demon Crusher',
         },
         body: JSON.stringify({
-          model: 'openai/gpt-4o-mini',
+          model: 'x-ai/grok-4-fast:free',
           messages: [
             {
               role: 'system',
@@ -155,7 +155,7 @@ class PsychologicalWarfareService {
               content: 'Generate the devastating psychological taunts as specified in JSON format.'
             }
           ],
-          max_tokens: 800,
+          max_tokens: 1200,
           temperature: 0.9,
         }),
       });
@@ -171,15 +171,43 @@ class PsychologicalWarfareService {
         throw new Error('No content generated');
       }
 
-      // Try to parse JSON response
+      // Try to parse JSON response with better error handling
       try {
-        const dialogues = JSON.parse(content);
+        let cleanContent = content.trim();
+
+        // If response is truncated, try to fix it
+        if (!cleanContent.endsWith('}')) {
+          console.log('Response appears truncated, attempting to fix...');
+          const lastCompleteObject = cleanContent.lastIndexOf('}');
+          if (lastCompleteObject > 0) {
+            cleanContent = cleanContent.substring(0, lastCompleteObject + 1);
+          }
+        }
+
+        const dialogues = JSON.parse(cleanContent);
+
+        // Validate required fields
+        if (!dialogues.when_weak || !dialogues.when_afraid) {
+          throw new Error('Missing required dialogue categories');
+        }
+
         return {
           success: true,
           dialogues
         };
       } catch (parseError) {
         console.error('Failed to parse AI response as JSON:', content);
+        console.error('Parse error:', parseError instanceof Error ? parseError.message : 'Unknown parse error');
+
+        // Try to extract taunts even from malformed JSON
+        const extractedTaunts = this.extractTauntsFromText(content);
+        if (extractedTaunts) {
+          return {
+            success: true,
+            dialogues: extractedTaunts
+          };
+        }
+
         return {
           success: false,
           error: 'Invalid JSON response from AI'
@@ -193,6 +221,39 @@ class PsychologicalWarfareService {
         error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
+  }
+
+  /**
+   * Extract taunts from malformed/truncated JSON text
+   */
+  static extractTauntsFromText(content: string): any | null {
+    try {
+      // Extract arrays from the text even if JSON is malformed
+      const whenWeakMatch = content.match(/"when_weak":\s*\[(.*?)\]/s);
+      const whenAfraidMatch = content.match(/"when_afraid":\s*\[(.*?)\]/s);
+      const alwaysArrogantMatch = content.match(/"always_arrogant":\s*\[(.*?)\]/s) || content.match(/"when_strong":\s*\[(.*?)\]/s);
+
+      if (whenWeakMatch && whenAfraidMatch) {
+        const extractStrings = (match: string) => {
+          return match.split('",').map(s => s.trim().replace(/^"/, '').replace(/"$/, ''));
+        };
+
+        const result: any = {
+          when_weak: extractStrings(whenWeakMatch[1]),
+          when_afraid: extractStrings(whenAfraidMatch[1])
+        };
+
+        if (alwaysArrogantMatch) {
+          result.always_arrogant = extractStrings(alwaysArrogantMatch[1]);
+        }
+
+        console.log('Successfully extracted taunts from malformed JSON');
+        return result;
+      }
+    } catch (error) {
+      console.error('Failed to extract taunts from text:', error);
+    }
+    return null;
   }
 
   /**
