@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-expo-app:*)",
+      "Bash(robocopy:*)",
+      "Bash(xcopy:*)",
+      "Bash(dir:*)",
+      "Bash(npm install:*)",
+      "Bash(python:*)",
+      "Bash(ls:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
